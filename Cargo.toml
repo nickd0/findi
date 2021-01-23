@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 tokio = { version = "1.0.2", features = ["full"] }
 ipnet = "2.3.0"
+structopt = "0.3"
+dns-lookup = "1.0"

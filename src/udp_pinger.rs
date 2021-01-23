@@ -17,6 +17,7 @@ const UDP_PING_PORT: u16 = 39719;
 // use the same sockets to connect to every address?
 // Async connect and ready after the addresses are printed
 // TODO: use tokio once we're using async
+// Don't return bool, return a Result
 pub fn udp_ping(ip: IpAddr) -> bool {
   // TODO: don't use expect
   let sock = UdpSocket::bind("0.0.0.0:34254").expect("Couldn't bind UDP socket");
