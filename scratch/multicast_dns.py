@@ -2,6 +2,11 @@ import socket
 import struct
 import sys
 
+
+# cmd line option and addr
+opt = sys.argv[1]
+hostaddr = sys.argv[2]
+
 # DNS header:
 # 16-bit identifier 0xFEED
 msg = bytearray([0xFE, 0XED])
@@ -54,7 +59,6 @@ preceeding section, terminated with 0. It looks like this:
 0
 """
 
-hostaddr = sys.argv[1]
 addr_parts = hostaddr.split('.')
 addr_parts.reverse()
 addr_parts += ['in-addr', 'arpa']
@@ -63,12 +67,15 @@ addr_parts += ['in-addr', 'arpa']
 # Oops it has to be reversed in PTR format
 # ptr_addr = hostaddr + '.in-addr.arpa'
 
+# Build a separate reusable question message
+question = bytearray()
+
 for p in addr_parts:
     p_bytes = p.encode()
-    msg.append(len(p_bytes))
-    msg += p_bytes
+    question.append(len(p_bytes))
+    question += p_bytes
 
-msg.append(0)
+question.append(0)
 
 """
 Next section is QTYPE, a 2-byte code indicating the type
@@ -77,7 +84,7 @@ of question we're asking
 We're asking a PTR type question since we want a reverse
 lookup, that value is 12 (0x0C)
 """
-msg.extend([0x00, 0x0C])
+question.extend([0x00, 0x0C])
 
 """
 Final field is Query class, another 2-byte code.
@@ -87,7 +94,9 @@ for shortlist and
 https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
 for long list
 """
-msg.extend([0x00, 0x01])
+question.extend([0x00, 0x01])
+
+msg += question
 
 
 # Create the multicast UDP socket
@@ -148,7 +157,8 @@ we'll use the socket function `inet_aton` (https://linux.die.net/man/3/inet_addr
 to convert our string version of the mDNS address to a binary form in network byte order,
 which the ip_mreqn struct expects in the `imr_multiaddr` field.
 """
-mreqn = struct.pack('4sl', socket.inet_aton(MC_ADDR), socket.INADDR_ANY)
+# mreqn = struct.pack('4sl', socket.inet_aton(MC_ADDR), socket.INADDR_ANY)
+mreqn = struct.pack('4s4s', socket.inet_aton(MC_ADDR), socket.inet_aton('192.168.0.10'))
 
 # Now set the sockopt
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreqn)
@@ -162,10 +172,55 @@ sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreqn)
 # sock.sendto(msg, (MC_ADDR, MC_PORT))
 
 # Setup a different socket, is this a bad idea?
-MULTICAST_TTL = 20
-sock1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-sock1.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, MULTICAST_TTL)
-sock1.sendto(msg, (MC_ADDR, MC_PORT))
+if opt == '-s':
+    MULTICAST_TTL = 20
+    sock1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock1.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, MULTICAST_TTL)
+    sock1.sendto(msg, (MC_ADDR, MC_PORT))
+    sock1.settimeout(3)
+    try:
+        while True:
+            val = sock1.recv(10240)
+            # print(len(val))
+            # unpack header big-endian
+            resp_header = struct.unpack(">H2B4h", val[0:12])
+            if resp_header[0] == 0xFEED:
+                print("Done")
+                # 10:32am 1/14
+                # Now that we now we've got our response, lets get the index of the answer section
+                # The question section is exactly the same as in the query message, so we can
+                # get the answer offset with the length of the header (12) and question length
+                # We know the metadata for the answer section is 12 long with the format laid out
+                # here https://www2.cs.duke.edu/courses/fall16/compsci356/DNS/DNS-primer.pdf
+                # so lets unpack it and read our DNS answer!
+                ans_idx = 12 + len(question)
+                answer_pre = struct.unpack(">3HLH", val[ans_idx:ans_idx + 12])
+                # TODO check some of the meta data?
+                ans_len = answer_pre[-1]
+                ans_idx = ans_idx + 12
+                answer = ""
+                subs = val[ans_idx:ans_idx + ans_len]
+                bt = subs[0]
+                idx = 0
+                while True:
+                    answer += subs[idx + 1:(idx + bt + 1)].decode()
+                    if subs[(idx + bt + 1)] == 0x00:
+                        break
+                    else:
+                        answer += "."
+                        idx = idx + bt + 1
+                        bt = subs[idx]
+
+                # And we're done!
+                print(answer)
+
+                exit(0)
+
+    except socket.timeout:
+        print("No response")
+        exit(1)
+
+    # Manually unpack the question and answer section
 
 
 # Hmm, seem to get an immediate reponds on the recv socket!
@@ -183,6 +238,21 @@ sock1.sendto(msg, (MC_ADDR, MC_PORT))
 # Of course this only works for respolving devices that support mDNS resolution
 # Apple devices do (the original RFC is from Apple engineers in 2013 and became the Bonjour service)
 # Unclear if Windows does? https://stackoverflow.com/a/41019456/3121367
+# exit(0)
+
+
+# 12:19am After watching a movie, came back to this to see why I wasn't receiving the response
+# to my mDNS query (but was recieving other mDNS packets). Tried sending then recv'ing on 
+# sock1 and that just worked?
+
+# TODO next unpack response, format:
+# Use wireshark packet breakdown to build the unpack string
+# short - 2x bitfield/int - short - short - short - short - queries sect - answers sect
+# "h2b4hp"
+# Actually this may be hard to unpack because certain bytes indicate variable length
+# Check flags for no error and for authoritative?
+# See https://www2.cs.duke.edu/courses/fall16/compsci356/DNS/DNS-primer.pdf for response format
+# Skip the question section and unpack first
 
 while True:
     print(sock.recv(10240))
