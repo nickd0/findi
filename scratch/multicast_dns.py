@@ -61,7 +61,7 @@ if __name__ == '__main__':
     Next up is the question section:
     The question for us is the local IP address we just discovered,
     which we need to encode to DNS message name notation, where any "dot"
-    separators are replaced by a count of the number of bytes in the 
+    separators are replaced by a count of the number of bytes in the
     preceeding section, terminated with 0. It looks like this:
     [num bytes of "www"] | w | w | w |
     [num bytes of "example"] | e | x | a | m | p | l | e |
@@ -167,8 +167,8 @@ if __name__ == '__main__':
     to convert our string version of the mDNS address to a binary form in network byte order,
     which the ip_mreqn struct expects in the `imr_multiaddr` field.
     """
-    # mreqn = struct.pack('4sl', socket.inet_aton(MC_ADDR), socket.INADDR_ANY)
-    mreqn = struct.pack('4s4s', socket.inet_aton(MC_ADDR), socket.inet_aton('192.168.0.10'))
+    mreqn = struct.pack('4sl', socket.inet_aton(MC_ADDR), socket.INADDR_ANY)
+    # mreqn = struct.pack('4s4s', socket.inet_aton(MC_ADDR), socket.inet_aton('192.168.0.10'))
 
     # Now set the sockopt
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreqn)
@@ -238,7 +238,7 @@ if __name__ == '__main__':
 
     # Ok nvm its just the packet I sent :(
 
-    # OK, so perhaps I'm not getting a result, because I'm not actually using a proper 
+    # OK, so perhaps I'm not getting a result, because I'm not actually using a proper
     # domain-name PTR record. I was just translating the IP to strings, but it looks
     # like it may need t be in a specific ARPA-type record format (https://simpledns.plus/help/ptr-records))
     # See replacement of code above with timestamp "6:12pm"
@@ -252,7 +252,7 @@ if __name__ == '__main__':
 
 
     # 12:19am After watching a movie, came back to this to see why I wasn't receiving the response
-    # to my mDNS query (but was recieving other mDNS packets). Tried sending then recv'ing on 
+    # to my mDNS query (but was recieving other mDNS packets). Tried sending then recv'ing on
     # sock1 and that just worked?
 
     # TODO next unpack response, format:

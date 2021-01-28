@@ -25,9 +25,10 @@ pub fn udp_ping(ip: IpAddr) -> bool {
   sock.connect((ip, UDP_PING_PORT)).expect("Couldn't connect");
   let now = Instant::now();
   sock.send(&[1; 1]).expect("Couldn't send");
-  sock.set_read_timeout(Some(Duration::new(0, 100000000))).expect("Couldn't set read timeout");
+  sock.set_read_timeout(Some(Duration::new(0, 400_000_000))).expect("Couldn't set read timeout");
   match sock.recv(&mut [0; 1]) {
     Ok(_) => println!("No error"),
+    // Err(err) => println!("Error: {:?}, {}\n", err.kind(), err)
     Err(err) => match err.kind() {
       ErrorKind::WouldBlock => return false,
       _ => {
