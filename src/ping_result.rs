@@ -1,4 +1,4 @@
 use std::time::Duration;
-use std::io::ErrorKind;
+use std::io::Error;
 
-pub type PingResult = Result<Duration, ErrorKind>;
+pub type PingResult = Result<Duration, Error>;
