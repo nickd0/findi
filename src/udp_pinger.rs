@@ -20,12 +20,13 @@ const UDP_PING_PORT: u16 = 39719;
 // Async connect and ready after the addresses are printed
 // TODO: use tokio once we're using async
 // Don't return bool, return a Result
-pub fn udp_ping(ip: IpAddr) -> PingResult {
-  let sock = UdpSocket::bind("0.0.0.0:34254")?;
+pub fn udp_ping(sock: UdpSocket, ip: IpAddr) -> PingResult {
+  // let sock = UdpSocket::bind("0.0.0.0:0")?;
   sock.connect((ip, UDP_PING_PORT))?;
   let now = Instant::now();
 
   sock.send(&[1; 1])?;
+  println!(" ------ sent to {}", ip);
   sock.set_read_timeout(Some(Duration::from_millis(400)))?;
   match sock.recv(&mut [0; 1]) {
     Ok(_) => {},
