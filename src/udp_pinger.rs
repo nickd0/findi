@@ -26,12 +26,14 @@ pub fn udp_ping(sock: UdpSocket, ip: IpAddr) -> PingResult {
   let now = Instant::now();
 
   sock.send(&[1; 1])?;
-  println!(" ------ sent to {}", ip);
   sock.set_read_timeout(Some(Duration::from_millis(400)))?;
   match sock.recv(&mut [0; 1]) {
     Ok(_) => {},
     Err(err) => match err.kind() {
-      ErrorKind::WouldBlock => return Err(err),
+      ErrorKind::WouldBlock => {
+        println!("Err wouldblock {}", ip);
+        return Err(err)
+      },
       _ => {}
     }
   };
