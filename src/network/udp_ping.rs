@@ -1,4 +1,4 @@
-use ::std::net::{UdpSocket, IpAddr, SocketAddr};
+use ::std::net::{UdpSocket, IpAddr};
 use ::std::time::{Duration, Instant};
 use ::std::io::ErrorKind;
 use super::ping_result::PingResult;
