@@ -117,7 +117,7 @@ pub fn ui_loop(hosts: Vec<IpAddr>) -> Result<(), io::Error> {
 
       let normal_style = Style::default().bg(Color::Blue);
 
-      let header_cells = ["Host IP", "Hostname", "Status"]
+      let header_cells = ["Host IP", "Hostname", "Status", "Ports open"]
           .iter()
           .map(|h| Cell::from(*h));
 
@@ -127,7 +127,7 @@ pub fn ui_loop(hosts: Vec<IpAddr>) -> Result<(), io::Error> {
           .bottom_margin(1);
 
       let rows = table_state.items.iter().map(|host| {
-        let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), Cell::from("?")];
+        let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), Cell::from("?"), Cell::from("--")];
         Row::new(cells)
       });
 
@@ -136,9 +136,10 @@ pub fn ui_loop(hosts: Vec<IpAddr>) -> Result<(), io::Error> {
           .block(Block::default().borders(Borders::ALL).title("Hosts"))
           .highlight_style(selected_style)
           .widths(&[
-            Constraint::Percentage(50),
-            Constraint::Length(30),
-            Constraint::Max(10),
+            Constraint::Length(18),
+            Constraint::Percentage(30),
+            Constraint::Length(10),
+            Constraint::Max(10)
           ]);
 
       f.render_stateful_widget(t, rects[1], &mut table_state.state);
