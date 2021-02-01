@@ -1,14 +1,12 @@
 mod ip_parse;
-mod udp_pinger;
-mod tcp_ping;
-mod ping_result;
+mod network;
 
 use ip_parse::ip_parse;
-use udp_pinger::udp_ping;
-use tcp_ping::tcp_ping;
+
+use network::udp_ping::udp_ping;
+use network::tcp_ping::tcp_ping;
+
 use std::thread;
-use std::sync::{Arc, Mutex};
-use std::net::UdpSocket;
 
 use colored::*;
 
@@ -18,20 +16,15 @@ fn main() {
     let input = env::args().nth(1).expect("Please provide an input");
     let hosts = ip_parse(input).unwrap_or_default();
     let mut threads = vec![];
-    let lock = Arc::new(Mutex::new(0));
 
-    let sock = UdpSocket::bind("0.0.0.0:32524").expect("Couldn't create sock");
     for host in hosts {
-        // TOOD need to lock the udp socket
-        let sock_clone = sock.try_clone().expect("Couldnt clone udp socket");
         let t = thread::spawn(move || {
-            let active = udp_ping(sock_clone, host).is_ok();
-            // let tcpping = tcp_ping(host).is_ok();
-            // let string = format!("CIDR host: {} UDP: {}, TCP: {}", host, active, tcpping);
-            let string = format!("CIDR host: {} UDP: {}", host, active);
+            let udp_live = udp_ping(host).is_ok();
+            let tcp_live = tcp_ping(host).is_ok();
+
+            let string = format!("CIDR host: {} UDP: {} TCP: {}", host, udp_live, tcp_live);
             let mut col_string = string.white();
-            // if active || tcpping {
-            if active {
+            if udp_live || tcp_live {
                 col_string = string.green();
             }
             println!("{}", col_string);
