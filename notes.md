@@ -23,6 +23,13 @@ findi notes
 - [ ] App screen design
 - [ ] Inputs
 - [ ] Settings popups
+  - Local storage of settings
+- [ ] Customizable skins
+- A chart of host resolution and ping roundtrip times?
+- Traceroute geo ping mapper
+- Turn this into more of a network utility tool
+  - When certain cli arguments are given it will automatically enter local network finder mode or traceroute mode
+  - Or you can choose if no args are given
 
 ## App orchestration
 - [ ] Networking and UI threads
