@@ -34,6 +34,7 @@ TODO:
 - [ ] Settings popups
   - Local storage of settings
 - [ ] Customizable skins
+- Handle keyboard and mouse events from a separate thread and dispatch actions to the appstate store?
 - A chart of host resolution and ping roundtrip times?
 - Traceroute geo ping mapper
 - Turn this into more of a network utility tool
