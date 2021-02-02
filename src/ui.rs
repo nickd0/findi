@@ -1,5 +1,5 @@
-use super::network::host::{Host, SharedHosts};
-use std::net::IpAddr;
+use super::network::host::{HostVec};
+use crate::state::store::SharedAppStateStore;
 
 use std::io;
 use termion;
@@ -16,13 +16,13 @@ use tui::{
 
 pub struct StatefulTable {
   state: TableState,
-  items: SharedHosts
+  items: HostVec
 }
 
 const JUMP_LEN: usize = 20;
 
 impl StatefulTable {
-  pub fn new(hosts: SharedHosts) -> StatefulTable {
+  pub fn new(hosts: HostVec) -> StatefulTable {
     StatefulTable {
       items: hosts,
       state: TableState::default()
@@ -30,10 +30,9 @@ impl StatefulTable {
   }
 
   pub fn next(&mut self) {
-    let its = self.items.lock().unwrap();
     let i = match self.state.selected() {
       Some(i) => {
-        if i >= its.len() - 1 {
+        if i >= self.items.len() - 1 {
           0
         } else {
           i + 1
@@ -45,27 +44,25 @@ impl StatefulTable {
   }
 
   pub fn prev(&mut self) {
-    let its = self.items.lock().unwrap();
     let i = match self.state.selected() {
       Some(i) => {
         if i == 0 {
-          its.len() - 1
+          self.items.len() - 1
         } else {
           i - 1
         }
       },
-      None => its.len() - 1
+      None => self.items.len() - 1
     };
     self.state.select(Some(i))
   }
 
   // TODO use table window size to paginate
   pub fn pgdn(&mut self) {
-    let its = self.items.lock().unwrap();
     let i = match self.state.selected() {
       Some(i) => {
-        if i + JUMP_LEN > its.len() - 1 {
-          its.len() - 1
+        if i + JUMP_LEN > self.items.len() - 1 {
+          self.items.len() - 1
         } else {
           i + JUMP_LEN
         }
@@ -76,14 +73,16 @@ impl StatefulTable {
   }
 }
 
-pub fn ui_loop(hosts: SharedHosts) -> Result<(), io::Error> {
+pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
   let stdout = io::stdout().into_raw_mode()?;
   let backend = TermionBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
 
   // let p_hosts = hosts.try_lock().unwrap();// .iter().map(|h| Host::new(*h.ip) ).collect();
 
-  let mut table_state = StatefulTable::new(hosts.clone());
+  let lock_store = store.lock().unwrap();
+  let mut table_state = StatefulTable::new(lock_store.state.hosts.clone());
+  drop(lock_store);
   // let mut table_state = StatefulTable::new();
 
   // Uses termions async stdin for now,
@@ -94,7 +93,12 @@ pub fn ui_loop(hosts: SharedHosts) -> Result<(), io::Error> {
   // TODO control this from a separate thread using an Atomic::Bool
   'outer: loop {
 
-    let hosts_guard = hosts.lock();
+    // Update the stateful table from application state
+    // Then release the lock
+    let lock_store = store.lock().unwrap();
+    table_state.items = lock_store.state.hosts.clone();
+    drop(lock_store);
+
     terminal.draw(|f| {
       let rects = Layout::default()
           .direction(Direction::Vertical)
@@ -121,7 +125,7 @@ pub fn ui_loop(hosts: SharedHosts) -> Result<(), io::Error> {
 
       let normal_style = Style::default().bg(Color::Blue);
 
-      let header_cells = ["Host IP", "Hostname", "Status", "Ports open"]
+      let header_cells = ["Host IP", "Hostname", "Status", "Ping type", "Ports open"]
           .iter()
           .map(|h| Cell::from(*h));
 
@@ -130,9 +134,18 @@ pub fn ui_loop(hosts: SharedHosts) -> Result<(), io::Error> {
           .height(1)
           .bottom_margin(1);
 
-      let table_rows = table_state.items.lock().unwrap();
-      let rows = table_rows.iter().map(|host| {
-        let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), Cell::from("?"), Cell::from("--")];
+      let rows = table_state.items.iter().map(|host| {
+        let mut status_cell = Cell::from("?");
+        if let Some(dur) = host.ping_res {
+          status_cell = Cell::from(format!("✓ ({:?} ms)", dur.as_millis()));
+        }
+
+        let mut ping_cell = Cell::from("--");
+        if let Some(ping_type) = host.ping_type {
+          ping_cell = Cell::from(ping_type.to_string());
+        }
+
+        let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), status_cell, ping_cell, Cell::from("--")];
         Row::new(cells)
       });
 
@@ -143,6 +156,7 @@ pub fn ui_loop(hosts: SharedHosts) -> Result<(), io::Error> {
           .widths(&[
             Constraint::Length(18),
             Constraint::Percentage(30),
+            Constraint::Length(15),
             Constraint::Length(10),
             Constraint::Max(10)
           ]);
@@ -150,18 +164,19 @@ pub fn ui_loop(hosts: SharedHosts) -> Result<(), io::Error> {
       f.render_stateful_widget(t, rects[1], &mut table_state.state);
     })?;
 
-    drop(hosts_guard);
     if let Some(Ok(key)) = stdin.next() {
       match key {
           Key::Ctrl('c') => break 'outer,
           Key::Down => table_state.next(),
           Key::Up => table_state.prev(),
           Key::Char(' ') => table_state.pgdn(),
+          Key::Char('q') => break 'outer,
           Key::PageDown => table_state.pgdn(),
           _ => {}
       }
     }
   }
+  terminal.clear()?;
 
   Ok(())
 }

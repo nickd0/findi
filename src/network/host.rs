@@ -1,15 +1,11 @@
 use super::tcp_ping::tcp_ping;
 use super::udp_ping::udp_ping;
-use super::ping_result::{PingResult, PingResultOption};
+use super::ping_result::{PingResultOption};
 
 use std::net::{IpAddr};
-use std::sync::{Arc, Mutex};
 use std::fmt;
-use std::collections::HashMap;
 
-pub type HostMap = HashMap<IpAddr, Host>;
-
-pub type SharedHosts = Arc<Mutex<Vec<Host>>>;
+pub type HostVec = Vec<Host>;
 
 #[derive(Copy, Clone)]
 pub enum PingType {
@@ -20,8 +16,8 @@ pub enum PingType {
 impl fmt::Display for PingType {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
     match *self {
-      PingType::UDP => { write!(f, "UDP ping") },
-      PingType::TCP => { write!(f, "TCP ping") }
+      PingType::UDP => { write!(f, "UDP") },
+      PingType::TCP => { write!(f, "TCP") }
     }
   }
 }
@@ -37,6 +33,12 @@ pub struct Host {
 // a  user setting can indicate whether a tcp and/or a udp ping should be use
 // also allow for ICMP echo
 impl Host {
+  pub fn host_ping(ip: IpAddr) -> Host {
+    let mut host = Host::new(ip);
+    host.ping();
+    host
+  }
+
   pub fn new(ip: IpAddr) -> Host {
     Host {
       ip: ip,
@@ -57,7 +59,7 @@ impl Host {
             self.ping_type = Some(PingType::TCP);
             Some(t)
           },
-          Err(e) => { None }
+          Err(_) => { None }
         }
       }
     };

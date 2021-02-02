@@ -1,6 +1,6 @@
-use crate::network::host::HostMap;
+use crate::network::host::HostVec;
 
 #[derive(Default, Clone)]
 pub struct ApplicationState {
-  pub hosts: HostMap
+  pub hosts: HostVec
 }

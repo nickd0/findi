@@ -1,5 +1,5 @@
-use crate::network::host::HostMap;
 use crate::network::ping_result::PingResult;
+use crate::network::host::Host;
 
 use std::net::IpAddr;
 
@@ -7,6 +7,7 @@ use std::net::IpAddr;
 
 #[allow(dead_code)]
 pub enum AppAction {
-  BuildHosts(HostMap),
-  UpdatePingResult(IpAddr, PingResult)
+  BuildHosts(Vec<IpAddr>),
+  UpdatePingResult(IpAddr, PingResult),
+  UpdateHost(Host)
 }
