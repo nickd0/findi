@@ -1,4 +1,4 @@
-use super::network::host::Host;
+use super::network::host::{Host, SharedHosts};
 use std::net::IpAddr;
 
 use std::io;
@@ -16,13 +16,13 @@ use tui::{
 
 pub struct StatefulTable {
   state: TableState,
-  items: Vec<Host>
+  items: SharedHosts
 }
 
 const JUMP_LEN: usize = 20;
 
 impl StatefulTable {
-  pub fn new(hosts: Vec<Host>) -> StatefulTable {
+  pub fn new(hosts: SharedHosts) -> StatefulTable {
     StatefulTable {
       items: hosts,
       state: TableState::default()
@@ -30,9 +30,10 @@ impl StatefulTable {
   }
 
   pub fn next(&mut self) {
+    let its = self.items.lock().unwrap();
     let i = match self.state.selected() {
       Some(i) => {
-        if i >= self.items.len() - 1 {
+        if i >= its.len() - 1 {
           0
         } else {
           i + 1
@@ -44,25 +45,27 @@ impl StatefulTable {
   }
 
   pub fn prev(&mut self) {
+    let its = self.items.lock().unwrap();
     let i = match self.state.selected() {
       Some(i) => {
         if i == 0 {
-          self.items.len() - 1
+          its.len() - 1
         } else {
           i - 1
         }
       },
-      None => self.items.len() - 1
+      None => its.len() - 1
     };
     self.state.select(Some(i))
   }
 
   // TODO use table window size to paginate
   pub fn pgdn(&mut self) {
+    let its = self.items.lock().unwrap();
     let i = match self.state.selected() {
       Some(i) => {
-        if i + JUMP_LEN > self.items.len() - 1 {
-          self.items.len() - 1
+        if i + JUMP_LEN > its.len() - 1 {
+          its.len() - 1
         } else {
           i + JUMP_LEN
         }
@@ -73,14 +76,14 @@ impl StatefulTable {
   }
 }
 
-pub fn ui_loop(hosts: Vec<IpAddr>) -> Result<(), io::Error> {
+pub fn ui_loop(hosts: SharedHosts) -> Result<(), io::Error> {
   let stdout = io::stdout().into_raw_mode()?;
   let backend = TermionBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
 
-  let p_hosts = hosts.iter().map(|h| Host::new(*h) ).collect();
+  // let p_hosts = hosts.try_lock().unwrap();// .iter().map(|h| Host::new(*h.ip) ).collect();
 
-  let mut table_state = StatefulTable::new(p_hosts);
+  let mut table_state = StatefulTable::new(hosts.clone());
   // let mut table_state = StatefulTable::new();
 
   // Uses termions async stdin for now,
@@ -91,6 +94,7 @@ pub fn ui_loop(hosts: Vec<IpAddr>) -> Result<(), io::Error> {
   // TODO control this from a separate thread using an Atomic::Bool
   'outer: loop {
 
+    let hosts_guard = hosts.lock();
     terminal.draw(|f| {
       let rects = Layout::default()
           .direction(Direction::Vertical)
@@ -126,7 +130,8 @@ pub fn ui_loop(hosts: Vec<IpAddr>) -> Result<(), io::Error> {
           .height(1)
           .bottom_margin(1);
 
-      let rows = table_state.items.iter().map(|host| {
+      let table_rows = table_state.items.lock().unwrap();
+      let rows = table_rows.iter().map(|host| {
         let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), Cell::from("?"), Cell::from("--")];
         Row::new(cells)
       });
@@ -145,6 +150,7 @@ pub fn ui_loop(hosts: Vec<IpAddr>) -> Result<(), io::Error> {
       f.render_stateful_widget(t, rects[1], &mut table_state.state);
     })?;
 
+    drop(hosts_guard);
     if let Some(Ok(key)) = stdin.next() {
       match key {
           Key::Ctrl('c') => break 'outer,

@@ -1,10 +1,17 @@
 use super::tcp_ping::tcp_ping;
 use super::udp_ping::udp_ping;
-use super::ping_result::PingResult;
+use super::ping_result::{PingResult, PingResultOption};
 
 use std::net::{IpAddr};
+use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::collections::HashMap;
 
+pub type HostMap = HashMap<IpAddr, Host>;
+
+pub type SharedHosts = Arc<Mutex<Vec<Host>>>;
+
+#[derive(Copy, Clone)]
 pub enum PingType {
   UDP,
   TCP
@@ -19,9 +26,10 @@ impl fmt::Display for PingType {
   }
 }
 
+#[derive(Copy, Clone)]
 pub struct Host {
   pub ip: IpAddr,
-  pub ping_res: Option<PingResult>,
+  pub ping_res: PingResultOption,
   pub ping_type: Option<PingType>
 }
 
@@ -41,15 +49,15 @@ impl Host {
     self.ping_res = match udp_ping(self.ip) {
       Ok(t) => {
         self.ping_type = Some(PingType::UDP);
-        Some(Ok(t))
+        Some(t)
       },
       Err(_) => {
         match tcp_ping(self.ip) {
           Ok(t) => {
             self.ping_type = Some(PingType::TCP);
-            Some(Ok(t))
+            Some(t)
           },
-          Err(e) => { Some(Err(e)) }
+          Err(e) => { None }
         }
       }
     };

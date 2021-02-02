@@ -18,6 +18,15 @@ findi notes
   - use https://doc.rust-lang.org/std/sync/atomic/ to count threads
     - or a thread pool https://docs.rs/threadpool/1.8.1/threadpool/
 
+## Data
+- Wanted to try a sort of single source of truth where a `Mutex<Vec<Host>>` is used by all threads
+  - Problem is that each ping thread blocks used of the entire `Vec` so the pinging process blocks every time
+TODO:
+- [ ] Build a single stream data source that uses `mpsc::channel`s to maintain a central state
+  - A sort of redux-y way of managing state
+  - Take a functional approach with an immutable state
+    - see [r/rust post](https://www.reddit.com/r/rust/comments/8hh8r3/how_would_you_handle_application_state_in_rust/dymu6er?utm_source=share&utm_medium=web2x&context=3)
+
 ## UI
 - [ ] Simple TUI UI
 - [ ] App screen design
@@ -30,6 +39,10 @@ findi notes
 - Turn this into more of a network utility tool
   - When certain cli arguments are given it will automatically enter local network finder mode or traceroute mode
   - Or you can choose if no args are given
+- Or after a scan, you can highlight over an entry and the following options are available
+  - Port scan
+  - Traceroute (only or non-local ips)
+  - Mention https://freegeoip.app/ in the docs
 
 ## App orchestration
 - [ ] Networking and UI threads
