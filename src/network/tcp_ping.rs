@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use super::ping_result::PingResult;
 
-const TCP_PING_PORT: u16 = 80;
+pub const TCP_PING_PORT: u16 = 80;
 
 // TODO: custom result type
 // TODO: write a post about time::Instant

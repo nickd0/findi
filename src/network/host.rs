@@ -1,4 +1,4 @@
-use super::tcp_ping::tcp_ping;
+use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
 use super::udp_ping::udp_ping;
 use super::ping_result::{PingResultOption};
 
@@ -22,11 +22,12 @@ impl fmt::Display for PingType {
   }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Host {
   pub ip: IpAddr,
   pub ping_res: PingResultOption,
-  pub ping_type: Option<PingType>
+  pub ping_type: Option<PingType>,
+  pub tcp_ports: Vec<u16>
 }
 
 // TODO:
@@ -43,7 +44,8 @@ impl Host {
     Host {
       ip: ip,
       ping_res: None,
-      ping_type: None
+      ping_type: None,
+      tcp_ports: vec![]
     }
   }
 
@@ -57,6 +59,7 @@ impl Host {
         match tcp_ping(self.ip) {
           Ok(t) => {
             self.ping_type = Some(PingType::TCP);
+            self.tcp_ports.push(TCP_PING_PORT);
             Some(t)
           },
           Err(_) => { None }

@@ -1,4 +1,4 @@
-use super::network::host::{HostVec};
+use super::network::host::{PingType, HostVec};
 use crate::state::store::SharedAppStateStore;
 
 use std::io;
@@ -135,18 +135,26 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           .bottom_margin(1);
 
       let rows = table_state.items.iter().map(|host| {
+        let mut style = Style::default();
         let mut status_cell = Cell::from("?");
         if let Some(dur) = host.ping_res {
           status_cell = Cell::from(format!("✓ ({:?} ms)", dur.as_millis()));
+          style = style.fg(Color::Green);
         }
 
         let mut ping_cell = Cell::from("--");
+        let mut port_cell = Cell::from("--");
         if let Some(ping_type) = host.ping_type {
           ping_cell = Cell::from(ping_type.to_string());
+
+          match ping_type {
+            PingType::TCP => port_cell = Cell::from(host.tcp_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(",")),
+            _ => {}
+          }
         }
 
-        let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), status_cell, ping_cell, Cell::from("--")];
-        Row::new(cells)
+        let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), status_cell, ping_cell, port_cell];
+        Row::new(cells).style(style)
       });
 
       let t = Table::new(rows)
