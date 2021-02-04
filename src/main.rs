@@ -10,13 +10,16 @@ use network::host::{Host};
 use state::store::AppStateStore;
 use state::actions::AppAction;
 
-use std::net::IpAddr;
-use network::dns::{DnsQuestion, DnsPacket};
-use bincode::config::{DefaultOptions, Options};
-
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::env;
+
+#[allow(dead_code)]
+fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let _ = ui_loop(store);
+    })
+}
 
 fn main() {
     let input = env::args().nth(1).expect("Please provide an input");
@@ -30,10 +33,9 @@ fn main() {
 
     let shared_store = Arc::new(Mutex::new(store));
 
-    let ui_store = shared_store.clone();
-    let ui_thread = thread::spawn(move || {
-        let _ = ui_loop(ui_store);
-    });
+    #[cfg(feature = "ui")]
+    let ui_thread = start_ui(shared_store.clone());
+
     // TODO: share the same hosts vec between threads
 
     // This doesn't work because every thread waits to unlock the
@@ -53,6 +55,8 @@ fn main() {
     for t in threads {
         let _ = t.join();
     }
+
+    #[cfg(feature = "ui")]
     let _ = ui_thread.join();
 }
 

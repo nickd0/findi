@@ -6,16 +6,19 @@ with a u64 length of string. Doesn't look like there's anyway around
 this except to fork the crate? :(
 This will be annoying if we need to suck out those 8 bytes from the
 serialized packet
+
+Good note from this r/rust (https://www.reddit.com/r/rust/comments/93x8ej/which_is_better_vecu8_or_u8_for_storage_interface/) post:
+> Don't hide the cost of a function.
 */
 
-use std::net::{Ipv4Addr, IpAddr, UdpSocket};
+use std::net::{Ipv4Addr, UdpSocket};
 use serde::{Serialize, Deserialize};
 use serde_repr::*;
 use bincode::config::{DefaultOptions, Options};
 use bincode;
 use std::time::Duration;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DnsPacketHeader {
   trans_id: u16,
   q_flags: u16,
@@ -50,7 +53,7 @@ pub enum DnsQuestionClass {
   IN = 0x01
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DnsQuestion {
 
   #[serde(skip_serializing)]
@@ -63,7 +66,7 @@ pub struct DnsQuestion {
   qclass: DnsQuestionClass
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DnsArpaAddr {
 
   #[serde(skip_serializing)]
@@ -100,10 +103,23 @@ impl DnsArpaAddr {
 }
 
 // TODO: Serialize to bincode
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DnsPacket {
   header: DnsPacketHeader,
-  questions: Vec<DnsQuestion>
+  questions: Vec<DnsQuestion>,
+  qsizes: Vec<usize>,
+  answers: Vec<DnsAnswer>
+}
+
+impl Default for DnsPacket {
+  fn default() -> DnsPacket {
+    Self {
+      header: Default::default(),
+      questions: vec![],
+      qsizes: vec![],
+      answers: vec![]
+    }
+  }
 }
 
 impl DnsPacket {
@@ -113,8 +129,39 @@ impl DnsPacket {
         trans_id,
         ..Default::default()
       },
-      questions: vec![]
+      questions: vec![],
+      qsizes: vec![],
+      answers: vec![]
     }
+  }
+
+  pub fn from(header: DnsPacketHeader) -> DnsPacket {
+    Self {
+      header,
+      ..Default::default()
+    }
+  }
+
+  pub fn from_resp_bytes(quest: &DnsPacket, bytes: &[u8]) -> Result<DnsPacket, String> {
+    let header: DnsPacketHeader = serializer()
+        .deserialize(&bytes[..12])
+        .map_err(|e| e.to_string())?;
+    
+    let nans = header.n_answ as usize;
+    let mut pack = DnsPacket::from(header);
+
+    let offset = quest.qsizes.iter().fold(0, |sum, i| sum + i) + 12;
+    // println!("bytes: {:?}", &bytes[offset..]);
+    let len = bytes[11 + offset] as usize;
+    // println!("str {:?}", String::from_utf8_lossy(&bytes[12 + offset..(offset + 12 + len)]).replace(|c: char| !c.is_ascii(), "."));
+    for _ in 0..nans {
+      match DnsAnswer::from_bytes(&bytes, offset) {
+        Ok(a) => pack.answers.push(a),
+        Err(e) => println!("Couldn't unpack Dns Answer: {}", e)
+      }
+    };
+
+    Ok(pack)
   }
 
   pub fn add_q(&mut self, quest: DnsQuestion) {
@@ -122,15 +169,21 @@ impl DnsPacket {
     self.questions.push(quest);
   }
 
-  pub fn to_bytes(&self) -> Result<Vec<u8>, bincode::Error> {
+  pub fn to_bytes(&mut self) -> Result<Vec<u8>, bincode::Error> {
     let mut bytes: Vec<u8> = vec![];
     // Serialize header
     serializer().serialize_into(&mut bytes, &self.header)?;
 
     // Special serialize questions
+    // Keep track of the question packet sizes
+    // so we already know the answer offsets
     for q in &self.questions {
-      bytes.extend(&q.arpa_addr.addr_enc);
+      let qbytes = &q.arpa_addr.addr_enc;
+      let qlen = qbytes.len();
+      bytes.extend(qbytes);
       bytes.push(0x00);
+      // Size of encoded address + 4 metadata bytes + terminator byte
+      self.qsizes.push(qlen + 5);
       serializer().serialize_into(&mut bytes, &q)?;
     }
 
@@ -159,6 +212,42 @@ impl DnsQuestion {
   }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct DnsAnswer {
+  ptr_offset: u16,
+  qtype: DnsQuestionType,
+  qclass: DnsQuestionClass,
+  ttl: u32,
+  datalen: u16,
+
+  #[serde(skip_deserializing)]
+  psize: usize,
+
+  #[serde(skip_deserializing)]
+  hostname: String
+}
+
+impl DnsAnswer {
+  pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer, String> {
+    let mut ret: DnsAnswer = serializer()
+        .deserialize(&bytes[offset..(offset + 12)])
+        .map_err(|e| e.to_string())?;
+    
+    
+    ret.psize = 11 + ret.datalen as usize;
+    let str_slice: String = bytes[(offset + 12)..(12 + offset + ret.psize)].iter().map(|c| {
+      if !(*c as char).is_ascii() {
+        '.'
+      } else {
+        *c as char
+      }
+    }).collect();
+
+    ret.hostname = str_slice;
+    Ok(ret)
+  }
+}
+
 pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
   let mut packet = DnsPacket::new(0xFEED);
   let dns_q = DnsQuestion::lookup_ptr(ip);
@@ -169,6 +258,18 @@ pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
   usock.connect((ip, 5353))?;
   usock.send(&packet.to_bytes().unwrap())?;
   usock.set_read_timeout(Some(Duration::from_millis(400)))?;
+  let mut buf = [0; 100];
+  usock.recv(&mut buf)?;
+  println!("{:?}", &buf);
+  match DnsPacket::from_resp_bytes(&packet, &buf) {
+    Ok(p) => {
+      println!("Packet {:?}", p);
+      for a in &p.answers {
+        println!("Host resolved! {}", &a.hostname);
+      }
+    },
+    Err(_) => println!("Error in resolution")
+  }
   // TODO return the host address
   Ok("done".to_string())
 }
