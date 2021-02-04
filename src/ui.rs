@@ -10,7 +10,7 @@ use tui::{
   backend::TermionBackend,
   layout::{Constraint, Layout, Direction},
   style::{Color, Modifier, Style},
-  widgets::{Block, Borders, Cell, Row, Table, TableState},
+  widgets::{Block, Borders, Cell, Row, Table, TableState, Paragraph},
   Terminal,
 };
 
@@ -111,19 +111,19 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           )
           .split(f.size());
 
+      let input = Paragraph::new("Input here")
+          .block(Block::default().borders(Borders::ALL).title("Host search"));
 
-      let block = Block::default()
-          .title("Status")
-          .borders(Borders::ALL);
-      f.render_widget(block, rects[0]);
+      f.render_widget(input, rects[0]);
 
       
       let selected_style = Style::default()
-          .bg(Color::Green)
-          .fg(Color::Black)
+          .bg(Color::Black)
+          .fg(Color::Yellow)
           .add_modifier(Modifier::REVERSED);
 
-      let normal_style = Style::default().bg(Color::Blue);
+      let normal_style = Style::default()
+          .bg(Color::Rgb(23, 112, 191));
 
       let header_cells = ["Host IP", "Hostname", "Status", "Ping type", "Ports open"]
           .iter()
@@ -148,7 +148,12 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           ping_cell = Cell::from(ping_type.to_string());
 
           match ping_type {
-            PingType::TCP => port_cell = Cell::from(host.tcp_ports.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(",")),
+            PingType::TCP => port_cell = Cell::from(
+              host.tcp_ports.iter()
+                  .map(|p| p.to_string())
+                  .collect::<Vec<String>>()
+                  .join(",")
+            ),
             _ => {}
           }
         }

@@ -27,7 +27,8 @@ pub struct Host {
   pub ip: IpAddr,
   pub ping_res: PingResultOption,
   pub ping_type: Option<PingType>,
-  pub tcp_ports: Vec<u16>
+  pub tcp_ports: Vec<u16>,
+  pub host_name: Option<Result<String, String>>
 }
 
 // TODO:
@@ -45,6 +46,7 @@ impl Host {
       ip: ip,
       ping_res: None,
       ping_type: None,
+      host_name: None,
       tcp_ports: vec![]
     }
   }
@@ -65,6 +67,6 @@ impl Host {
           Err(_) => { None }
         }
       }
-    };
+    }
   }
 }
