@@ -8,9 +8,12 @@ This will be annoying if we need to suck out those 8 bytes from the
 serialized packet
 */
 
-use std::net::{Ipv4Addr};
+use std::net::{Ipv4Addr, IpAddr, UdpSocket};
 use serde::{Serialize, Deserialize};
 use serde_repr::*;
+use bincode::config::{DefaultOptions, Options};
+use bincode;
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize)]
 pub struct DnsPacketHeader {
@@ -36,13 +39,13 @@ impl Default for DnsPacketHeader {
 }
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
-#[repr(u8)]
+#[repr(u16)]
 pub enum DnsQuestionType {
   PTR = 0x0C
 }
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
-#[repr(u8)]
+#[repr(u16)]
 pub enum DnsQuestionClass {
   IN = 0x01
 }
@@ -53,11 +56,10 @@ pub struct DnsQuestion {
   #[serde(skip_serializing)]
   addr: Ipv4Addr,
 
+  #[serde(skip_serializing)]
   pub arpa_addr: DnsArpaAddr,
 
-  #[serde(skip_serializing)]
   qtype: DnsQuestionType,
-  #[serde(skip_serializing)]
   qclass: DnsQuestionClass
 }
 
@@ -91,8 +93,8 @@ impl DnsArpaAddr {
     }
 
     DnsArpaAddr {
-      addr: addr,
-      addr_enc: addr_enc
+      addr,
+      addr_enc,
     }
   }
 }
@@ -105,10 +107,10 @@ pub struct DnsPacket {
 }
 
 impl DnsPacket {
-  pub fn new(tid: u16) -> DnsPacket {
+  pub fn new(trans_id: u16) -> DnsPacket {
     Self {
       header: DnsPacketHeader {
-        trans_id: tid,
+        trans_id,
         ..Default::default()
       },
       questions: vec![]
@@ -119,6 +121,27 @@ impl DnsPacket {
     self.header.n_qs += 1;
     self.questions.push(quest);
   }
+
+  pub fn to_bytes(&self) -> Result<Vec<u8>, bincode::Error> {
+    let mut bytes: Vec<u8> = vec![];
+    // Serialize header
+    serializer().serialize_into(&mut bytes, &self.header)?;
+
+    // Special serialize questions
+    for q in &self.questions {
+      bytes.extend(&q.arpa_addr.addr_enc);
+      bytes.push(0x00);
+      serializer().serialize_into(&mut bytes, &q)?;
+    }
+
+    Ok(bytes)
+  }
+}
+
+fn serializer() -> impl Options {
+  DefaultOptions::new()
+    .with_fixint_encoding()
+    .with_big_endian()
 }
 
 impl DnsQuestion {
@@ -127,20 +150,25 @@ impl DnsQuestion {
   }
 
   pub fn lookup(addr: Ipv4Addr, qtype: DnsQuestionType) -> DnsQuestion {
-    // let header = DnsPacketHeader {
-    //   trans_id: trans_id,
-    //   n_qs: 1,
-    //   ..Default::default()
-    // };
-
     Self {
-      addr: addr,
+      addr,
       arpa_addr: DnsArpaAddr::from(addr),
-      qtype: qtype,
+      qtype,
       qclass: DnsQuestionClass::IN
     }
   }
 }
 
-// pub fn multicast_dns_lookup(ip: IpAddr) -> Result<String, String> {
-// }
+pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
+  let mut packet = DnsPacket::new(0xFEED);
+  let dns_q = DnsQuestion::lookup_ptr(ip);
+  
+  packet.add_q(dns_q);
+
+  let usock = UdpSocket::bind("0.0.0.0:0")?;
+  usock.connect((ip, 5353))?;
+  usock.send(&packet.to_bytes().unwrap())?;
+  usock.set_read_timeout(Some(Duration::from_millis(400)))?;
+  // TODO return the host address
+  Ok("done".to_string())
+}

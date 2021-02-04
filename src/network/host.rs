@@ -1,6 +1,7 @@
 use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
 use super::udp_ping::udp_ping;
 use super::ping_result::{PingResultOption};
+use super::dns::multicast_dns_lookup;
 
 use std::net::{IpAddr};
 use std::fmt;
@@ -38,6 +39,10 @@ impl Host {
   pub fn host_ping(ip: IpAddr) -> Host {
     let mut host = Host::new(ip);
     host.ping();
+    // TODO: do multicast lookup in a different thread?
+    if let IpAddr::V4(h4) = ip {
+      let _ = multicast_dns_lookup(h4);
+    }
     host
   }
 

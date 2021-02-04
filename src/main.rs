@@ -12,7 +12,7 @@ use state::actions::AppAction;
 
 use std::net::IpAddr;
 use network::dns::{DnsQuestion, DnsPacket};
-use bincode;
+use bincode::config::{DefaultOptions, Options};
 
 use std::thread;
 use std::sync::{Arc, Mutex};
@@ -21,18 +21,6 @@ use std::env;
 fn main() {
     let input = env::args().nth(1).expect("Please provide an input");
     let hosts = ip_parse(input).unwrap_or_default();
-
-    // let _ = match hosts[0] {
-    //     IpAddr::V4(a) => {
-    //         let mut p = DnsPacket::new(0xFEED);
-    //         let q = DnsQuestion::lookup_ptr(a);
-    //         p.add_q(q);
-    //         let encoded: Vec<u8> = bincode::serialize(&p).unwrap();
-    //         println!("{:?}", &encoded);
-    //     },
-    //     _ => {}
-    // };
-    // return ();
 
     let mut threads = vec![];
 
