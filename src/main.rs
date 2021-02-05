@@ -22,6 +22,7 @@ use state::store::AppStateStore;
 use state::actions::AppAction;
 
 use std::thread;
+use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::env;
 
@@ -52,8 +53,10 @@ fn main() {
     // This doesn't work because every thread waits to unlock the
     // ensure host vec
     // TODO: limit this to a certain number of threads
+    // User settable thread limit and time between thread spawn
     for host in hosts {
         let store_copy = shared_store.clone();
+        thread::sleep(Duration::from_millis(100));
         let t = thread::spawn(move || {
             // TODO: should this be mut or just receive the ping result value?
             let h = Host::host_ping(host);

@@ -70,7 +70,10 @@ impl Host {
             self.tcp_ports.push(TCP_PING_PORT);
             Some(t)
           },
-          Err(_) => { None }
+          Err(e) => {
+            // println!("TCP err {}: {}", self.ip, e.to_string());
+            None
+          }
         }
       }
     }

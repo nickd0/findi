@@ -12,7 +12,7 @@ pub const TCP_PING_PORT: u16 = 80;
 pub fn tcp_ping(ip: IpAddr) -> PingResult {
   let now = Instant::now();
   let sockaddr = SocketAddr::new(ip, TCP_PING_PORT);
-  let to = Some(Duration::from_millis(400));
+  let to = Some(Duration::from_millis(2000));
   let mut stream = TcpStream::connect_timeout(&sockaddr, to.unwrap())?;
 
   stream.set_write_timeout(to)?;
