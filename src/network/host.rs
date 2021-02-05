@@ -40,8 +40,9 @@ impl Host {
     let mut host = Host::new(ip);
     host.ping();
     // TODO: do multicast lookup in a different thread?
+    // Standardize error
     if let IpAddr::V4(h4) = ip {
-      let _ = multicast_dns_lookup(h4);
+      host.host_name = Some(multicast_dns_lookup(h4).map_err(|e| e.to_string()));
     }
     host
   }

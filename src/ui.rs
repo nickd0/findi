@@ -144,6 +144,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
 
         let mut ping_cell = Cell::from("--");
         let mut port_cell = Cell::from("--");
+        let mut host_cell = Cell::from("--");
         if let Some(ping_type) = host.ping_type {
           ping_cell = Cell::from(ping_type.to_string());
 
@@ -158,7 +159,14 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           }
         }
 
-        let cells = vec![Cell::from(host.ip.to_string()), Cell::from("--"), status_cell, ping_cell, port_cell];
+        if let Some(host_name) = &host.host_name {
+          match host_name {
+            Ok(hn) => host_cell = Cell::from(hn.to_string()),
+            Err(_) => host_cell = Cell::from("x")
+          }
+        }
+
+        let cells = vec![Cell::from(host.ip.to_string()), host_cell, status_cell, ping_cell, port_cell];
         Row::new(cells).style(style)
       });
 

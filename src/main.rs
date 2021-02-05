@@ -1,3 +1,14 @@
+/*
+Notes:
+- Split DNS code into separate files
+  - dns/packet.rs
+    - question, answers, packet
+ - dns/mdns.rs
+- Should host lookup be in a different thread?
+  - Or somehow ping and host lookup should use the same UdpSocket?
+- Standardize error and result types
+*/
+
 mod ip_parse;
 mod network;
 mod ui;

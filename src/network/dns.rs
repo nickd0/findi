@@ -17,6 +17,7 @@ use serde_repr::*;
 use bincode::config::{DefaultOptions, Options};
 use bincode;
 use std::time::Duration;
+use std::io::{ErrorKind, Error};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DnsPacketHeader {
@@ -151,13 +152,10 @@ impl DnsPacket {
     let mut pack = DnsPacket::from(header);
 
     let offset = quest.qsizes.iter().fold(0, |sum, i| sum + i) + 12;
-    // println!("bytes: {:?}", &bytes[offset..]);
-    let len = bytes[11 + offset] as usize;
-    // println!("str {:?}", String::from_utf8_lossy(&bytes[12 + offset..(offset + 12 + len)]).replace(|c: char| !c.is_ascii(), "."));
     for _ in 0..nans {
       match DnsAnswer::from_bytes(&bytes, offset) {
         Ok(a) => pack.answers.push(a),
-        Err(e) => println!("Couldn't unpack Dns Answer: {}", e)
+        Err(_) => {}
       }
     };
 
@@ -221,9 +219,6 @@ struct DnsAnswer {
   datalen: u16,
 
   #[serde(skip_deserializing)]
-  psize: usize,
-
-  #[serde(skip_deserializing)]
   hostname: String
 }
 
@@ -234,9 +229,8 @@ impl DnsAnswer {
         .map_err(|e| e.to_string())?;
     
     
-    ret.psize = 11 + ret.datalen as usize;
-    let str_slice: String = bytes[(offset + 12)..(12 + offset + ret.psize)].iter().map(|c| {
-      if !(*c as char).is_ascii() {
+    let str_slice: String = bytes[(offset + 13)..(13 + offset + (ret.datalen - 2) as usize)].iter().map(|c| {
+      if (*c as char).is_ascii_control() {
         '.'
       } else {
         *c as char
@@ -260,16 +254,10 @@ pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
   usock.set_read_timeout(Some(Duration::from_millis(400)))?;
   let mut buf = [0; 100];
   usock.recv(&mut buf)?;
-  println!("{:?}", &buf);
+
+  // TODO: is there a more efficient way than clone here?
   match DnsPacket::from_resp_bytes(&packet, &buf) {
-    Ok(p) => {
-      println!("Packet {:?}", p);
-      for a in &p.answers {
-        println!("Host resolved! {}", &a.hostname);
-      }
-    },
-    Err(_) => println!("Error in resolution")
+    Ok(p) => Ok(p.answers[0].hostname.clone()),
+    Err(e) => Err(Error::new(ErrorKind::NotFound, "No hostname returned"))
   }
-  // TODO return the host address
-  Ok("done".to_string())
 }
