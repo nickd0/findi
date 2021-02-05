@@ -9,6 +9,7 @@ use termion::event::{Key};
 use tui::{
   backend::TermionBackend,
   layout::{Constraint, Layout, Direction},
+  text::{Span},
   style::{Color, Modifier, Style},
   widgets::{Block, Borders, Cell, Row, Table, TableState, Paragraph, Gauge},
   Terminal,
@@ -92,12 +93,9 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
   let backend = TermionBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
 
-  // let p_hosts = hosts.try_lock().unwrap();// .iter().map(|h| Host::new(*h.ip) ).collect();
-
   let lock_store = store.lock().unwrap();
   let mut table_state = StatefulTable::new(lock_store.state.hosts.clone());
   drop(lock_store);
-  // let mut table_state = StatefulTable::new();
 
   // Uses termions async stdin for now,
   // Does not work on windows
@@ -111,6 +109,8 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
     // Then release the lock
     let lock_store = store.lock().unwrap();
     table_state.items = lock_store.state.hosts.clone();
+    // Clone for now, but maybe we shouldnt drop the store lock until the end of the loop?
+    let query = lock_store.state.query.clone();
     drop(lock_store);
 
     terminal.draw(|f| {
@@ -119,14 +119,14 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           .margin(1)
           .constraints(
               [
-                  Constraint::Percentage(10),
-                  Constraint::Percentage(80),
-                  Constraint::Percentage(2)
+                  Constraint::Max(3),
+                  Constraint::Min(30),
+                  Constraint::Max(3)
               ].as_ref()
           )
           .split(f.size());
 
-      let input = Paragraph::new("Input here")
+      let input = Paragraph::new(Span::from(query))
           .block(Block::default()
           .borders(Borders::ALL)
           .title("Host search"));

@@ -21,7 +21,12 @@ impl Reducer<AppAction> for AppReducer {
         if let Some(idx) = state.hosts.iter().position(|h| h.ip == host.ip) {
           state.hosts[idx] = host;
         }
-        return state
+        state
+      },
+
+      AppAction::SetQuery(query) => {
+        state.query = query;
+        state
       },
 
       _ => state

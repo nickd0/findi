@@ -1,0 +1,23 @@
+Roadmap
+===
+
+## v0.1.0
+- [x] Live host detection with UDP/TCP ping
+- [x] mDNS host name resolution
+- [x] Thread pool
+- [ ] NetBIOS host name resolution
+- [ ] Tests setup
+- [ ] Program stop control
+- [ ] New search from within UI
+- [ ] Non-private range/CIDR validation
+- [ ] Cleanup
+
+## v0.2.0
+- [ ] Query-wide TCP port scan results
+- [ ] Individual result overview popup modal
+- [ ] Additional TCP port scans of individual entry
+- [ ] Clipboard copy functionality
+
+## v0.3.0
+- [ ] User settings for scan type, wait times, UI skins!
+- [ ] Carmen/traceroute integration for non-private queries

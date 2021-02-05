@@ -13,7 +13,6 @@ mod ip_parse;
 mod network;
 mod ui;
 mod state;
-mod dns;
 
 use ip_parse::ip_parse;
 use ui::ui_loop;
@@ -26,6 +25,9 @@ use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::env;
 
+use threadpool::ThreadPool;
+
+const TP_WORKERS: usize = 10;
 
 #[allow(dead_code)]
 fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
@@ -36,13 +38,12 @@ fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
 
 fn main() {
     let input = env::args().nth(1).expect("Please provide an input");
-    let hosts = ip_parse(input).unwrap_or_default();
-
-    let mut threads = vec![];
+    let hosts = ip_parse(&input).unwrap_or_default();
 
     let mut store = AppStateStore::new();
 
     store.dispatch(AppAction::BuildHosts(hosts.clone()));
+    store.dispatch(AppAction::SetQuery(input));
 
     let shared_store = Arc::new(Mutex::new(store));
 
@@ -55,20 +56,16 @@ fn main() {
     // ensure host vec
     // TODO: limit this to a certain number of threads
     // User settable thread limit and time between thread spawn
+    let pool = ThreadPool::new(TP_WORKERS);
     for host in hosts {
         let store_copy = shared_store.clone();
         thread::sleep(Duration::from_millis(100));
-        let t = thread::spawn(move || {
+        pool.execute(move || {
             // TODO: should this be mut or just receive the ping result value?
             let h = Host::host_ping(host);
             let mut store_lock = store_copy.lock().unwrap();
             store_lock.dispatch(AppAction::UpdateHost(h));
         });
-        threads.push(t);
-    }
-
-    for t in threads {
-        let _ = t.join();
     }
 
     #[cfg(feature = "ui")]

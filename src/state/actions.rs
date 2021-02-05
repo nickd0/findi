@@ -9,7 +9,8 @@ pub trait Action {}
 pub enum AppAction {
   BuildHosts(Vec<IpAddr>),
   UpdatePingResult(IpAddr, PingResult),
-  UpdateHost(Host)
+  UpdateHost(Host),
+  SetQuery(String)
 }
 
 impl Action for AppAction {}
