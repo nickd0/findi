@@ -21,10 +21,14 @@ use state::store::AppStateStore;
 use state::actions::AppAction;
 
 use std::thread;
+use std::process::exit;
+use std::net::IpAddr;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::env;
 
+use pnet::ipnetwork::IpNetwork;
+use pnet::datalink;
 use threadpool::ThreadPool;
 
 const TP_WORKERS: usize = 10;
@@ -37,13 +41,34 @@ fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
 }
 
 fn main() {
-    let input = env::args().nth(1).expect("Please provide an input");
-    let hosts = ip_parse(&input).unwrap_or_default();
+    let interfaces = datalink::interfaces();
+    let default_iface = interfaces
+        .iter()
+        .find(|e| {
+            e.is_up() && !e.is_loopback() && !e.ips.is_empty()
+        });
 
     let mut store = AppStateStore::new();
 
-    store.dispatch(AppAction::BuildHosts(hosts.clone()));
-    store.dispatch(AppAction::SetQuery(input));
+    let hosts: Vec<IpAddr>;
+
+    // TODO: how to handle multiple ips on one interface?
+    // TODO: use Ipv4Addr everywhere!
+    if let IpNetwork::V4(ipn) = default_iface.unwrap().ips[0] {
+        hosts = ipn.iter().map(|ip| {
+            IpAddr::from(ip)
+        }).collect();
+        store.dispatch(AppAction::BuildHosts(hosts.clone()));
+        store.dispatch(AppAction::SetQuery(ipn.to_string()));
+
+    } else if let Some(input) = env::args().nth(1) {
+        hosts = ip_parse(&input).unwrap_or_default();
+        store.dispatch(AppAction::BuildHosts(hosts.clone()));
+        store.dispatch(AppAction::SetQuery(input));
+    } else {
+        println!("No input provided and could not find an available interface!");
+        exit(1);
+    }
 
     let shared_store = Arc::new(Mutex::new(store));
 
@@ -71,7 +96,3 @@ fn main() {
     #[cfg(feature = "ui")]
     let _ = ui_thread.join();
 }
-
-// fn main() {
-//     ui_loop();
-// }

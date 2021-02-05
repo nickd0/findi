@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 # tokio = { version = "1.0.2", features = ["full"] }
 ipnet = "2.3.0"
+# Use ipnetwork instead? (its a dep of pnet) https://docs.rs/ipnetwork/0.17.0/ipnetwork/enum.IpNetwork.html
 # structopt = "0.3"
 dns-lookup = "1.0"
 colored = "2"

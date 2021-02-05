@@ -6,6 +6,8 @@ Roadmap
 - [x] Simple centralized state management
 - [x] mDNS host name resolution
 - [x] Thread pool
+- [ ] Refactor to use Ipv4Addr everywhere
+- [x] Get network from available interface if no input
 - [ ] NetBIOS host name resolution
 - [ ] Tests setup
 - [ ] Program stop control
