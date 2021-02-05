@@ -3,6 +3,7 @@ Roadmap
 
 ## v0.1.0
 - [x] Live host detection with UDP/TCP ping
+- [x] Simple centralized state management
 - [x] mDNS host name resolution
 - [x] Thread pool
 - [ ] NetBIOS host name resolution
