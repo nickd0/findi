@@ -29,7 +29,8 @@ pub struct Host {
   pub ping_res: PingResultOption,
   pub ping_type: Option<PingType>,
   pub tcp_ports: Vec<u16>,
-  pub host_name: Option<Result<String, String>>
+  pub host_name: Option<Result<String, String>>,
+  pub ping_done: bool
 }
 
 // TODO:
@@ -43,7 +44,8 @@ impl Host {
     // Standardize error
     if let IpAddr::V4(h4) = ip {
       host.host_name = Some(multicast_dns_lookup(h4).map_err(|e| e.to_string()));
-    }
+    };
+    host.ping_done = true;
     host
   }
 
@@ -53,7 +55,8 @@ impl Host {
       ping_res: None,
       ping_type: None,
       host_name: None,
-      tcp_ports: vec![]
+      tcp_ports: vec![],
+      ping_done: false
     }
   }
 
@@ -70,10 +73,7 @@ impl Host {
             self.tcp_ports.push(TCP_PING_PORT);
             Some(t)
           },
-          Err(e) => {
-            // println!("TCP err {}: {}", self.ip, e.to_string());
-            None
-          }
+          Err(_) => { None }
         }
       }
     }

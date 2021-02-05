@@ -1,4 +1,4 @@
-use super::network::host::{PingType, HostVec};
+use super::network::host::{PingType, HostVec, Host};
 use crate::state::store::SharedAppStateStore;
 
 use std::io;
@@ -10,7 +10,7 @@ use tui::{
   backend::TermionBackend,
   layout::{Constraint, Layout, Direction},
   style::{Color, Modifier, Style},
-  widgets::{Block, Borders, Cell, Row, Table, TableState, Paragraph},
+  widgets::{Block, Borders, Cell, Row, Table, TableState, Paragraph, Gauge},
   Terminal,
 };
 
@@ -71,6 +71,20 @@ impl StatefulTable {
     };
     self.state.select(Some(i))
   }
+
+  pub fn pgup(&mut self) {
+    let i = match self.state.selected() {
+      Some(i) => {
+        if i - JUMP_LEN <= 0 {
+          0
+        } else {
+          i - JUMP_LEN
+        }
+      },
+      None => 0
+    };
+    self.state.select(Some(i))
+  }
 }
 
 pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
@@ -106,15 +120,31 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           .constraints(
               [
                   Constraint::Percentage(10),
-                  Constraint::Percentage(80)
+                  Constraint::Percentage(80),
+                  Constraint::Percentage(2)
               ].as_ref()
           )
           .split(f.size());
 
       let input = Paragraph::new("Input here")
-          .block(Block::default().borders(Borders::ALL).title("Host search"));
+          .block(Block::default()
+          .borders(Borders::ALL)
+          .title("Host search"));
 
       f.render_widget(input, rects[0]);
+
+      let num_done = table_state.items
+          .iter()
+          .filter(|&h| h.ping_done)
+          .collect::<Vec<&Host>>()
+          .len();
+
+      let gauge = Gauge::default()
+          .block(Block::default().title("Hosts scanned").borders(Borders::ALL))
+          .gauge_style(Style::default().fg(Color::Yellow))
+          .percent((num_done * 100 / table_state.items.len()) as u16);
+        
+      f.render_widget(gauge, rects[2]);
 
       
       let selected_style = Style::default()
@@ -191,6 +221,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           Key::Down => table_state.next(),
           Key::Up => table_state.prev(),
           Key::Char(' ') => table_state.pgdn(),
+          Key::Ctrl(' ') => table_state.pgup(),
           Key::Char('q') => break 'outer,
           Key::PageDown => table_state.pgdn(),
           _ => {}

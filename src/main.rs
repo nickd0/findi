@@ -26,6 +26,7 @@ use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::env;
 
+
 #[allow(dead_code)]
 fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
