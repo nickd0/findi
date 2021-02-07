@@ -48,3 +48,11 @@ TODO:
 ## App orchestration
 - [ ] Networking and UI threads
 - [ ] Tokio? (main async `fn`)
+
+
+## TODO
+- Consider crossbeam for concurrency https://github.com/crossbeam-rs/crossbeam
+
+- service search
+  - Once you have a list of addresses, you can search for services either by entering the service dns name or by choosing from a preset list (which can be  updated from the configs) ie "Spotify Connect": _spotify-connect._tcp.local, "Airplay": _airplay._tcp.local
+    - Or you can search by this from the beginning and it will start with a network search of  this service and display the table. You can then do a full ping scan if you want

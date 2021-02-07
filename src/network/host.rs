@@ -3,7 +3,7 @@ use super::udp_ping::udp_ping;
 use super::ping_result::{PingResultOption};
 use super::dns::multicast_dns_lookup;
 
-use std::net::{IpAddr};
+use std::net::{Ipv4Addr};
 use std::fmt;
 
 pub type HostVec = Vec<Host>;
@@ -25,7 +25,7 @@ impl fmt::Display for PingType {
 
 #[derive(Clone)]
 pub struct Host {
-  pub ip: IpAddr,
+  pub ip: Ipv4Addr,
   pub ping_res: PingResultOption,
   pub ping_type: Option<PingType>,
   pub tcp_ports: Vec<u16>,
@@ -37,19 +37,17 @@ pub struct Host {
 // a  user setting can indicate whether a tcp and/or a udp ping should be use
 // also allow for ICMP echo
 impl Host {
-  pub fn host_ping(ip: IpAddr) -> Host {
+  pub fn host_ping(ip: Ipv4Addr) -> Host {
     let mut host = Host::new(ip);
     host.ping();
     // TODO: do multicast lookup in a different thread?
     // Standardize error
-    if let IpAddr::V4(h4) = ip {
-      host.host_name = Some(multicast_dns_lookup(h4).map_err(|e| e.to_string()));
-    };
+    host.host_name = Some(multicast_dns_lookup(ip).map_err(|e| e.to_string()));
     host.ping_done = true;
     host
   }
 
-  pub fn new(ip: IpAddr) -> Host {
+  pub fn new(ip: Ipv4Addr) -> Host {
     Host {
       ip: ip,
       ping_res: None,

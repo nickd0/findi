@@ -36,3 +36,16 @@ impl AppStateStore {
     *dplocked = false;
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_dispatch_with_set_query_action() {
+    let mut store = AppStateStore::new();
+    let query = "Foo Query";
+    store.dispatch(AppAction::SetQuery(query.to_string()));
+    assert_eq!(store.state.query, query)
+  }
+}

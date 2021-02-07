@@ -1,4 +1,4 @@
-use ::std::net::{UdpSocket, IpAddr};
+use ::std::net::{UdpSocket, Ipv4Addr};
 use ::std::time::{Duration, Instant};
 use ::std::io::ErrorKind;
 use std::thread::sleep;
@@ -8,7 +8,7 @@ const UDP_PING_PORT: u16 = 39719;
 
 
 
-pub fn udp_ping(ip: IpAddr) -> PingResult {
+pub fn udp_ping(ip: Ipv4Addr) -> PingResult {
   // TODO make this user settable
   let mut tries = 3;
 

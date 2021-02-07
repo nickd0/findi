@@ -9,12 +9,10 @@ Notes:
 - Standardize error and result types
 */
 
-mod ip_parse;
 mod network;
 mod ui;
 mod state;
 
-use ip_parse::ip_parse;
 use ui::ui_loop;
 use network::host::{Host};
 use state::store::AppStateStore;
@@ -22,7 +20,7 @@ use state::actions::AppAction;
 
 use std::thread;
 use std::process::exit;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -48,22 +46,30 @@ fn main() {
         .find(|e| {
             e.is_up() && !e.is_loopback() && !e.ips.is_empty()
         });
+    let has_iface = default_iface.is_some();
 
     let mut store = AppStateStore::new();
 
-    let hosts: Vec<IpAddr>;
+    let hosts: Vec<Ipv4Addr>;
     let query: String;
 
-    // TODO: how to handle multiple ips on one interface?
-    if let IpNetwork::V4(ipn) = default_iface.unwrap().ips[0] {
-        hosts = ipn.iter()
-            .map(|ip| IpAddr::from(ip))
-            .collect();
-        query = ipn.to_string();
-
-    } else if let Some(input) = env::args().nth(1) {
-        hosts = ip_parse(&input).unwrap_or_default();
+    if let Some(input) = env::args().nth(1) {
+        // hosts = ip_parse(&input).unwrap_or_default();
+        if let Ok(IpNetwork::V4(ipn)) = input.parse::<IpNetwork>() {
+            hosts = ipn.iter().collect()
+        } else {
+            return println!("Please provide a valid IPv4 CIDR network")
+        }
         query = input;
+
+    } else if default_iface.is_some() {
+        if let IpNetwork::V4(ipn) = default_iface.unwrap().ips[0] {
+            // TODO: how to handle multiple ips on one interface?
+            hosts = ipn.iter().collect();
+            query = ipn.to_string();
+        } else {
+            return println!("Currently only interfaces with an IPv4 address can be used")
+        }
 
     } else {
         println!("No input provided and could not find an available interface!");
