@@ -10,7 +10,8 @@ pub enum AppAction {
   BuildHosts(Vec<Ipv4Addr>),
   UpdatePingResult(Ipv4Addr, PingResult),
   UpdateHost(Host),
-  SetQuery(String)
+  SetQuery(String),
+  IterateFocus
 }
 
 impl Action for AppAction {}

@@ -56,3 +56,6 @@ TODO:
 - service search
   - Once you have a list of addresses, you can search for services either by entering the service dns name or by choosing from a preset list (which can be  updated from the configs) ie "Spotify Connect": _spotify-connect._tcp.local, "Airplay": _airplay._tcp.local
     - Or you can search by this from the beginning and it will start with a network search of  this service and display the table. You can then do a full ping scan if you want
+
+- Page Routing
+  - A `UiPage` trait that has many components that know how to draw themselves and can handle input. Can also dispatch to the store

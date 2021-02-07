@@ -1,5 +1,8 @@
+pub mod components;
+
 use super::network::host::{PingType, HostVec, Host};
 use crate::state::store::SharedAppStateStore;
+use crate::state::actions::AppAction;
 
 use std::io;
 use std::sync::{
@@ -92,6 +95,15 @@ impl StatefulTable {
   }
 }
 
+fn handle_backspace(store: SharedAppStateStore) {
+  let mut lstore = store.lock().unwrap();
+  let qlen = lstore.state.query.len();
+  if qlen > 0 {
+    let q = lstore.state.query[..qlen - 1].to_owned();
+    lstore.dispatch(AppAction::SetQuery(q))
+  }
+}
+
 pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), io::Error> {
   let stdout = io::stdout().into_raw_mode()?;
   let backend = TermionBackend::new(stdout);
@@ -104,6 +116,8 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
   // Uses termions async stdin for now,
   // Does not work on windows
   let mut stdin = termion::async_stdin().keys();
+
+  let mut ui_item_idx = 1;
 
   terminal.clear()?;
   // TODO control this from a separate thread using an Atomic::Bool
@@ -129,13 +143,27 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
               ].as_ref()
           )
           .split(f.size());
+        
+      let selected_border_style = Style::default().fg(Color::Yellow);
+      let default_border_style = Style::default().fg(Color::White);
 
-      let input = Paragraph::new(Span::from(query))
-          .block(Block::default()
-          .borders(Borders::ALL)
-          .title("Host search"));
+      let input = Paragraph::new(Span::from(query.to_owned()))
+          .block(
+            Block::default()
+              .borders(Borders::ALL)
+              .border_style(
+                if ui_item_idx == 0 {
+                  selected_border_style
+                } else {
+                  default_border_style
+                }
+              )
+              .title("Host search")
+          );
 
       f.render_widget(input, rects[0]);
+
+      f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1);
 
       let num_done = table_state.items
           .iter()
@@ -204,9 +232,20 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
         Row::new(cells).style(style)
       });
 
+      let table_block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(
+          if ui_item_idx == 1 {
+            selected_border_style
+          } else {
+            default_border_style
+          }
+        )
+        .title("Hosts");
+
       let t = Table::new(rows)
           .header(header)
-          .block(Block::default().borders(Borders::ALL).title("Hosts"))
+          .block(table_block)
           .highlight_style(selected_style)
           .widths(&[
             Constraint::Length(18),
@@ -221,6 +260,7 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
 
     if let Some(Ok(key)) = stdin.next() {
       match key {
+          Key::Char('\t') | Key::BackTab => ui_item_idx = ui_item_idx ^ 1,
           Key::Ctrl('c') => run.store(false, Ordering::Release),
           Key::Down => table_state.next(),
           Key::Up => table_state.prev(),
@@ -228,6 +268,11 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
           Key::Ctrl(' ') => table_state.pgup(),
           Key::Char('q') => run.store(false, Ordering::Release),
           Key::PageDown => table_state.pgdn(),
+          Key::Backspace => {
+            if ui_item_idx == 0 {
+              handle_backspace(store.clone())
+            }
+          }
           _ => {}
       }
     }

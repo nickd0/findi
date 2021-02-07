@@ -29,6 +29,10 @@ impl Reducer<AppAction> for AppReducer {
         state
       },
 
+      AppAction::IterateFocus => {
+        state
+      }
+
       _ => state
     }
   }
