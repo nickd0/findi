@@ -22,5 +22,5 @@ Roadmap
 - [ ] Clipboard copy functionality
 
 ## v0.3.0
-- [ ] User settings for scan type, wait times, UI skins!
+- [ ] User settings for scan type, wait times, thread pool size, UI skins!
 - [ ] Carmen/traceroute integration for non-private queries

@@ -2,6 +2,10 @@ use super::network::host::{PingType, HostVec, Host};
 use crate::state::store::SharedAppStateStore;
 
 use std::io;
+use std::sync::{
+  Arc,
+  atomic::{AtomicBool, Ordering}
+};
 use termion;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -88,7 +92,7 @@ impl StatefulTable {
   }
 }
 
-pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
+pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), io::Error> {
   let stdout = io::stdout().into_raw_mode()?;
   let backend = TermionBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
@@ -103,7 +107,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
 
   terminal.clear()?;
   // TODO control this from a separate thread using an Atomic::Bool
-  'outer: loop {
+  while run.load(Ordering::Acquire) {
 
     // Update the stateful table from application state
     // Then release the lock
@@ -119,9 +123,9 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
           .margin(1)
           .constraints(
               [
-                  Constraint::Max(3),
-                  Constraint::Min(30),
-                  Constraint::Max(3)
+                  Constraint::Length(3),
+                  Constraint::Min(10),
+                  Constraint::Length(3)
               ].as_ref()
           )
           .split(f.size());
@@ -217,12 +221,12 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
 
     if let Some(Ok(key)) = stdin.next() {
       match key {
-          Key::Ctrl('c') => break 'outer,
+          Key::Ctrl('c') => run.store(false, Ordering::Release),
           Key::Down => table_state.next(),
           Key::Up => table_state.prev(),
           Key::Char(' ') => table_state.pgdn(),
           Key::Ctrl(' ') => table_state.pgup(),
-          Key::Char('q') => break 'outer,
+          Key::Char('q') => run.store(false, Ordering::Release),
           Key::PageDown => table_state.pgdn(),
           _ => {}
       }

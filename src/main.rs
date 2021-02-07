@@ -25,18 +25,19 @@ use std::process::exit;
 use std::net::IpAddr;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::env;
 
 use pnet::ipnetwork::IpNetwork;
 use pnet::datalink;
 use threadpool::ThreadPool;
 
-const TP_WORKERS: usize = 10;
+const TP_WORKERS: usize = 100;
 
 #[allow(dead_code)]
-fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
+fn start_ui(store: Arc<Mutex<AppStateStore>>, run: Arc<AtomicBool>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let _ = ui_loop(store);
+        let _ = ui_loop(store, run);
     })
 }
 
@@ -51,42 +52,45 @@ fn main() {
     let mut store = AppStateStore::new();
 
     let hosts: Vec<IpAddr>;
+    let query: String;
 
     // TODO: how to handle multiple ips on one interface?
-    // TODO: use Ipv4Addr everywhere!
     if let IpNetwork::V4(ipn) = default_iface.unwrap().ips[0] {
-        hosts = ipn.iter().map(|ip| {
-            IpAddr::from(ip)
-        }).collect();
-        store.dispatch(AppAction::BuildHosts(hosts.clone()));
-        store.dispatch(AppAction::SetQuery(ipn.to_string()));
+        hosts = ipn.iter()
+            .map(|ip| IpAddr::from(ip))
+            .collect();
+        query = ipn.to_string();
 
     } else if let Some(input) = env::args().nth(1) {
         hosts = ip_parse(&input).unwrap_or_default();
-        store.dispatch(AppAction::BuildHosts(hosts.clone()));
-        store.dispatch(AppAction::SetQuery(input));
+        query = input;
+
     } else {
         println!("No input provided and could not find an available interface!");
         exit(1);
     }
 
+    store.dispatch(AppAction::BuildHosts(hosts.clone()));
+    store.dispatch(AppAction::SetQuery(query));
+
     let shared_store = Arc::new(Mutex::new(store));
+    // Should this be part of the central state store?
+    // We gain efficiencies by using an AtomicBool vs
+    // just a bool in a Mutex
+    let run = Arc::new(AtomicBool::new(true));
 
     #[cfg(feature = "ui")]
-    let ui_thread = start_ui(shared_store.clone());
+    let ui_thread = start_ui(shared_store.clone(), run.clone());
 
-    // TODO: share the same hosts vec between threads
-
-    // This doesn't work because every thread waits to unlock the
-    // ensure host vec
-    // TODO: limit this to a certain number of threads
-    // User settable thread limit and time between thread spawn
     let pool = ThreadPool::new(TP_WORKERS);
     for host in hosts {
+        if !run.load(Ordering::Acquire) {
+            break;
+        }
+
         let store_copy = shared_store.clone();
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(50));
         pool.execute(move || {
-            // TODO: should this be mut or just receive the ping result value?
             let h = Host::host_ping(host);
             let mut store_lock = store_copy.lock().unwrap();
             store_lock.dispatch(AppAction::UpdateHost(h));
