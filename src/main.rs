@@ -44,9 +44,10 @@ fn main() {
     let default_iface = interfaces
         .iter()
         .find(|e| {
-            e.is_up() && !e.is_loopback() && !e.ips.is_empty()
+            e.is_up() && !e.is_loopback()
+                && !e.ips.is_empty()
+                && e.ips[0].is_ipv4()
         });
-    let has_iface = default_iface.is_some();
 
     let mut store = AppStateStore::new();
 

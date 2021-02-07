@@ -11,8 +11,8 @@ Roadmap
 - [ ] NetBIOS host name resolution
 - [ ] Tests setup
 - [x] Program stop control
-- [ ] New search from within UI
-- [ ] Non-private range/CIDR validation
+- [ ] New search from within UI (`cidr_input_edit`)
+- [ ] Non-private range/CIDR validation, validate size of range
 - [ ] Cleanup
 
 ## v0.2.0
@@ -20,9 +20,11 @@ Roadmap
 - [ ] Individual result overview popup modal
 - [ ] Additional TCP port scans of individual entry
 - [ ] Clipboard copy functionality
+- [ ] Routing, Page system
 
 ## v0.3.0
 - [ ] User settings for scan type, wait times, thread pool size, UI skins!
+- [ ] Menu bar
 - [ ] Service search: Multicast DNS to discover available services on the network (airplay, spotify connect, etc)
 - [ ] Carmen/traceroute integration for non-private queries
 - [ ] IPv6 support?
