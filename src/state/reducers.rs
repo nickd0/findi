@@ -29,6 +29,11 @@ impl Reducer<AppAction> for AppReducer {
         state
       },
 
+      AppAction::SetInputErr(err) => {
+        state.input_err = err;
+        state
+      },
+
       AppAction::IterateFocus => {
         state
       }

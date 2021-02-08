@@ -14,13 +14,16 @@ mod ui;
 mod state;
 
 use ui::ui_loop;
-use network::host::{Host};
+use network::{
+    input_parse,
+    host::{Host}
+};
 use state::store::AppStateStore;
 use state::actions::AppAction;
 
 use std::thread;
 use std::process::exit;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -44,9 +47,7 @@ fn main() {
     let default_iface = interfaces
         .iter()
         .find(|e| {
-            e.is_up() && !e.is_loopback()
-                && !e.ips.is_empty()
-                && e.ips[0].is_ipv4()
+            e.is_up() && !e.is_loopback() && !e.ips.is_empty()
         });
 
     let mut store = AppStateStore::new();
@@ -55,12 +56,11 @@ fn main() {
     let query: String;
 
     if let Some(input) = env::args().nth(1) {
-        // hosts = ip_parse(&input).unwrap_or_default();
-        if let Ok(IpNetwork::V4(ipn)) = input.parse::<IpNetwork>() {
-            hosts = ipn.iter().collect()
-        } else {
-            return println!("Please provide a valid IPv4 CIDR network")
+        match input_parse(&input) {
+            Ok(hs) => hosts = hs,
+            Err(msg) => return println!("{}", msg)
         }
+
         query = input;
 
     } else if default_iface.is_some() {
@@ -96,11 +96,12 @@ fn main() {
         }
 
         let store_copy = shared_store.clone();
-        thread::sleep(Duration::from_millis(200));
+        thread::sleep(Duration::from_millis(50));
         pool.execute(move || {
             let h = Host::host_ping(host);
-            let mut store_lock = store_copy.lock().unwrap();
-            store_lock.dispatch(AppAction::UpdateHost(h));
+            store_copy
+                .lock().unwrap()
+                .dispatch(AppAction::UpdateHost(h));
         });
     }
 

@@ -1,6 +1,10 @@
 pub mod components;
+mod popup;
 
-use super::network::host::{PingType, HostVec, Host};
+use super::network::{
+  input_parse,
+  host::{PingType, HostVec, Host}
+};
 use crate::state::store::SharedAppStateStore;
 use crate::state::actions::AppAction;
 use components::MainPageContent;
@@ -96,15 +100,6 @@ impl StatefulTable {
   }
 }
 
-fn handle_backspace(store: SharedAppStateStore) {
-  let mut lstore = store.lock().unwrap();
-  let qlen = lstore.state.query.len();
-  if qlen > 0 {
-    let q = lstore.state.query[..qlen - 1].to_owned();
-    lstore.dispatch(AppAction::SetQuery(q))
-  }
-}
-
 fn handle_table_input(key: Key, table_state: &mut StatefulTable) {
   match key {
     Key::Down | Key::Char('j') => table_state.next(),
@@ -125,6 +120,17 @@ fn handle_field_input(key: Key, store: SharedAppStateStore) {
         lstore.dispatch(AppAction::SetQuery(q))
       }
     },
+    Key::Char('\n') => {
+      let par_err = input_parse(&lstore.state.query).is_err();
+      lstore.dispatch(AppAction::SetInputErr(par_err));
+    },
+    Key::Char(c) => {
+      if !c.is_ascii_control() {
+        let mut q = lstore.state.query.to_owned();
+        q.push(c);
+        lstore.dispatch(AppAction::SetQuery(q))
+      }
+    }
     _ => {}
   }
    
@@ -147,6 +153,7 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
 
   terminal.clear()?;
   // TODO control this from a separate thread using an Atomic::Bool
+
   while run.load(Ordering::Acquire) {
 
     // Update the stateful table from application state
@@ -155,6 +162,7 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
     table_state.items = lock_store.state.hosts.clone();
     // Clone for now, but maybe we shouldnt drop the store lock until the end of the loop?
     let query = lock_store.state.query.clone();
+    let parse_err = lock_store.state.input_err;
     drop(lock_store);
 
     terminal.draw(|f| {
@@ -179,7 +187,13 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
               .borders(Borders::ALL)
               .border_style(
                 match curr_focus {
-                  MainPageContent::QueryInput => selected_border_style,
+                  MainPageContent::QueryInput => {
+                    if parse_err {
+                      selected_border_style.fg(Color::Red)
+                    } else {
+                      selected_border_style
+                    }
+                  },
                   _ => default_border_style
                 }
               )
@@ -205,7 +219,6 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
           .percent((num_done * 100 / table_state.items.len()) as u16);
         
       f.render_widget(gauge, rects[2]);
-
       
       let selected_style = Style::default()
           .bg(Color::Black)
@@ -283,6 +296,10 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
           ]);
 
       f.render_stateful_widget(t, rects[1], &mut table_state.state);
+
+      if parse_err {
+        popup::draw_popup("Query error!".to_string(), f)
+      }
     })?;
 
     if let Some(Ok(key)) = stdin.next() {

@@ -11,6 +11,7 @@ pub enum AppAction {
   UpdatePingResult(Ipv4Addr, PingResult),
   UpdateHost(Host),
   SetQuery(String),
+  SetInputErr(bool),
   IterateFocus
 }
 
