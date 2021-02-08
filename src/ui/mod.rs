@@ -3,6 +3,7 @@ pub mod components;
 use super::network::host::{PingType, HostVec, Host};
 use crate::state::store::SharedAppStateStore;
 use crate::state::actions::AppAction;
+use components::MainPageContent;
 
 use std::io;
 use std::sync::{
@@ -14,7 +15,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::event::{Key};
 use tui::{
-  backend::TermionBackend,
+  backend::{TermionBackend},
   layout::{Constraint, Layout, Direction},
   text::{Span},
   style::{Color, Modifier, Style},
@@ -70,7 +71,7 @@ impl StatefulTable {
     let i = match self.state.selected() {
       Some(i) => {
         if i + JUMP_LEN > self.items.len() - 1 {
-          self.items.len() - 1
+          0
         } else {
           i + JUMP_LEN
         }
@@ -83,8 +84,8 @@ impl StatefulTable {
   pub fn pgup(&mut self) {
     let i = match self.state.selected() {
       Some(i) => {
-        if i - JUMP_LEN <= 0 {
-          0
+        if i < JUMP_LEN {
+          self.items.len() -1
         } else {
           i - JUMP_LEN
         }
@@ -104,6 +105,31 @@ fn handle_backspace(store: SharedAppStateStore) {
   }
 }
 
+fn handle_table_input(key: Key, table_state: &mut StatefulTable) {
+  match key {
+    Key::Down | Key::Char('j') => table_state.next(),
+    Key::Up | Key::Char('k') => table_state.prev(),
+    Key::Char(' ') | Key::Char('J') | Key::PageDown => table_state.pgdn(),
+    Key::Ctrl(' ') | Key::Char('K') | Key::PageUp => table_state.pgup(),
+    _ => {}
+  }
+}
+
+fn handle_field_input(key: Key, store: SharedAppStateStore) {
+  let mut lstore = store.lock().unwrap();
+  match key {
+    Key::Backspace => {
+      let qlen = lstore.state.query.len();
+      if qlen > 0 {
+        let q = lstore.state.query[..qlen - 1].to_owned();
+        lstore.dispatch(AppAction::SetQuery(q))
+      }
+    },
+    _ => {}
+  }
+   
+}
+
 pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), io::Error> {
   let stdout = io::stdout().into_raw_mode()?;
   let backend = TermionBackend::new(stdout);
@@ -117,7 +143,7 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
   // Does not work on windows
   let mut stdin = termion::async_stdin().keys();
 
-  let mut ui_item_idx = 1;
+  let mut curr_focus = MainPageContent::HostsTable;
 
   terminal.clear()?;
   // TODO control this from a separate thread using an Atomic::Bool
@@ -152,10 +178,9 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
             Block::default()
               .borders(Borders::ALL)
               .border_style(
-                if ui_item_idx == 0 {
-                  selected_border_style
-                } else {
-                  default_border_style
+                match curr_focus {
+                  MainPageContent::QueryInput => selected_border_style,
+                  _ => default_border_style
                 }
               )
               .title("Host search")
@@ -163,7 +188,10 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
 
       f.render_widget(input, rects[0]);
 
-      f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1);
+      match curr_focus {
+        MainPageContent::QueryInput => f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1),
+        _ => {}
+      };
 
       let num_done = table_state.items
           .iter()
@@ -235,10 +263,9 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
       let table_block = Block::default()
         .borders(Borders::ALL)
         .border_style(
-          if ui_item_idx == 1 {
-            selected_border_style
-          } else {
-            default_border_style
+          match curr_focus {
+            MainPageContent::HostsTable => selected_border_style,
+            _ => default_border_style
           }
         )
         .title("Hosts");
@@ -260,20 +287,21 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
 
     if let Some(Ok(key)) = stdin.next() {
       match key {
-          Key::Char('\t') | Key::BackTab => ui_item_idx = ui_item_idx ^ 1,
-          Key::Ctrl('c') => run.store(false, Ordering::Release),
-          Key::Down => table_state.next(),
-          Key::Up => table_state.prev(),
-          Key::Char(' ') => table_state.pgdn(),
-          Key::Ctrl(' ') => table_state.pgup(),
-          Key::Char('q') => run.store(false, Ordering::Release),
-          Key::PageDown => table_state.pgdn(),
-          Key::Backspace => {
-            if ui_item_idx == 0 {
-              handle_backspace(store.clone())
+          Key::Char('\t') | Key::BackTab => {
+            curr_focus = match curr_focus {
+              MainPageContent::HostsTable => MainPageContent::QueryInput,
+              _ => MainPageContent::HostsTable
             }
           }
-          _ => {}
+          Key::Ctrl('c') => run.store(false, Ordering::Release),
+          Key::Char('q') => run.store(false, Ordering::Release),
+          _ => {
+            match curr_focus {
+              MainPageContent::HostsTable => handle_table_input(key, &mut table_state),
+              MainPageContent::QueryInput => handle_field_input(key, store.clone()),
+              _ => {}
+            }
+          }
       }
     }
   }

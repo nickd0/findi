@@ -96,7 +96,7 @@ fn main() {
         }
 
         let store_copy = shared_store.clone();
-        thread::sleep(Duration::from_millis(50));
+        thread::sleep(Duration::from_millis(200));
         pool.execute(move || {
             let h = Host::host_ping(host);
             let mut store_lock = store_copy.lock().unwrap();
