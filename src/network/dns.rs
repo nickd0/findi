@@ -259,7 +259,14 @@ pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
 
     // TODO: is there a more efficient way than clone here?
     match DnsPacket::from_resp_bytes(&packet, &buf) {
-        Ok(p) => Ok(p.answers[0].hostname.clone()),
+        Ok(p) => {
+            // Ok(p.answers[0].hostname.clone()),
+            if let Some(ans) = p.answers.get(0) {
+                Ok(ans.hostname.to_owned())
+            } else {
+                Err(Error::new(ErrorKind::NotFound, "Recieved response with no answers"))
+            }
+        }
         Err(_) => Err(Error::new(ErrorKind::NotFound, "No hostname returned")),
     }
 }

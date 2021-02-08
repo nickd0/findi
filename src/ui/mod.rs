@@ -1,5 +1,6 @@
 pub mod components;
-mod popup;
+mod modal;
+mod notification;
 
 use super::network::{
   input_parse,
@@ -264,7 +265,10 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
 
         if let Some(host_name) = &host.host_name {
           match host_name {
-            Ok(hn) => host_cell = Cell::from(hn.to_string()),
+            Ok(hn) => {
+              style = style.fg(Color::Green);
+              host_cell = Cell::from(hn.to_string())
+            },
             Err(_) => host_cell = Cell::from("x")
           }
         }
@@ -298,7 +302,12 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
       f.render_stateful_widget(t, rects[1], &mut table_state.state);
 
       if parse_err {
-        popup::draw_popup("Query error!".to_string(), f)
+        // modal::draw_modal("Query error!".to_string(), f)
+        notification::draw_notification("Query error".to_owned(), "Could not parse query input".to_owned(), f)
+      }
+
+      if num_done >= 10 {
+        modal::draw_modal("Confirm".to_owned(), f);
       }
     })?;
 

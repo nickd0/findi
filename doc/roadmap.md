@@ -5,6 +5,7 @@ Roadmap
 - [x] Live host detection with UDP/TCP ping
 - [x] Simple centralized state management
 - [x] mDNS host name resolution
+  - [ ] Handle cases where mDNS resolves but ping failed. Re-ping?
 - [x] Thread pool
 - [x] Refactor to use Ipv4Addr everywhere
 - [x] Get network from available interface if no input
