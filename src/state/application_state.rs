@@ -5,6 +5,7 @@ pub struct ApplicationState {
   pub hosts: HostVec,
   pub query: String,
   pub input_err: bool,
+  pub search_run: bool,
   // TODO: should ui focus be part of application state?
   // pub focus: UiComponent
 }

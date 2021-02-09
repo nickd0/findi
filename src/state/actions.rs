@@ -12,6 +12,9 @@ pub enum AppAction {
   UpdateHost(Host),
   SetQuery(String),
   SetInputErr(bool),
+  SetHostSearchRun(bool),
+  NewQuery(Vec<Ipv4Addr>),
+  RestartQuery,
   IterateFocus
 }
 

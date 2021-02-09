@@ -36,6 +36,17 @@ impl Reducer<AppAction> for AppReducer {
 
       AppAction::IterateFocus => {
         state
+      },
+
+      AppAction::SetHostSearchRun(run) => {
+        state.search_run = run;
+        state
+      },
+
+      AppAction::NewQuery(hosts) => {
+        state.hosts = hosts.iter().map(|h| Host::new(*h) ).collect();
+        state.search_run = true;
+        state
       }
 
       _ => state

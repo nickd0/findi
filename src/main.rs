@@ -12,33 +12,30 @@ Notes:
 mod network;
 mod ui;
 mod state;
+mod config;
 
 use ui::ui_loop;
-use network::{
-    input_parse,
-    host::{Host}
-};
+use network::input_parse;
 use state::store::AppStateStore;
 use state::actions::AppAction;
+use network::host_search;
 
 use std::thread;
 use std::process::exit;
 use std::net::Ipv4Addr;
-use std::time::Duration;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool};
 use std::env;
 
 use pnet::ipnetwork::IpNetwork;
 use pnet::datalink;
-use threadpool::ThreadPool;
 
-const TP_WORKERS: usize = 100;
+static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
 
 #[allow(dead_code)]
-fn start_ui(store: Arc<Mutex<AppStateStore>>, run: Arc<AtomicBool>) -> thread::JoinHandle<()> {
+fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let _ = ui_loop(store, run);
+        let _ = ui_loop(store);
     })
 }
 
@@ -81,29 +78,11 @@ fn main() {
     store.dispatch(AppAction::SetQuery(query));
 
     let shared_store = Arc::new(Mutex::new(store));
-    // Should this be part of the central state store?
-    // We gain efficiencies by using an AtomicBool vs
-    // just a bool in a Mutex
-    let run = Arc::new(AtomicBool::new(true));
 
     #[cfg(feature = "ui")]
-    let ui_thread = start_ui(shared_store.clone(), run.clone());
+    let ui_thread = start_ui(shared_store.clone());
 
-    let pool = ThreadPool::new(TP_WORKERS);
-    for host in hosts {
-        if !run.load(Ordering::Acquire) {
-            break;
-        }
-
-        let store_copy = shared_store.clone();
-        thread::sleep(Duration::from_millis(50));
-        pool.execute(move || {
-            let h = Host::host_ping(host);
-            store_copy
-                .lock().unwrap()
-                .dispatch(AppAction::UpdateHost(h));
-        });
-    }
+    host_search(shared_store.clone());
 
     #[cfg(feature = "ui")]
     let _ = ui_thread.join();

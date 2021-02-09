@@ -6,15 +6,15 @@ use super::network::{
   input_parse,
   host::{PingType, HostVec, Host}
 };
-use crate::state::store::SharedAppStateStore;
-use crate::state::actions::AppAction;
 use components::MainPageContent;
 
+use crate::network::host_search;
+use crate::state::store::{SharedAppStateStore, store_dispatch};
+use crate::state::actions::AppAction;
+use crate::GLOBAL_RUN;
+
 use std::io;
-use std::sync::{
-  Arc,
-  atomic::{AtomicBool, Ordering}
-};
+use std::sync::atomic::Ordering;
 use termion;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -122,8 +122,32 @@ fn handle_field_input(key: Key, store: SharedAppStateStore) {
       }
     },
     Key::Char('\n') => {
-      let par_err = input_parse(&lstore.state.query).is_err();
-      lstore.dispatch(AppAction::SetInputErr(par_err));
+      let parsed = input_parse(&lstore.state.query);
+      lstore.dispatch(AppAction::SetInputErr(parsed.is_err()));
+      if !parsed.is_err() {
+        lstore.dispatch(AppAction::SetHostSearchRun(false));
+        lstore.dispatch(AppAction::BuildHosts(parsed.unwrap()));
+        lstore.dispatch(AppAction::SetHostSearchRun(true))
+      }
+      // TODO: add an action to stop query and restart
+      // TODO: do this parsing somewhere else
+      // TODO: is this store_dispatch method better? Its clunkier but it does allow the store
+      // to be accessed and changes propogated inbetween displatches, rather than locking the store
+      // for the whole block
+      // if !par_err {
+      //   store_dispatch(store.clone(), AppAction::SetHostSearchRun(false));
+      //   match input_parse(&lstore.state.query) {
+      //       Ok(hs) => {
+      //         store_dispatch(store.clone(), AppAction::NewQuery(hs));
+      //         // TODO: do not like doing this here, should be controlled
+      //         // by central state?
+      //         host_search(store.clone())
+      //       },
+      //       _ => {}
+      //   }
+      // }
+
+      // store.dispatch(AppAction::BuildHosts(hosts.clone()));
     },
     Key::Char(c) => {
       if !c.is_ascii_control() {
@@ -137,7 +161,7 @@ fn handle_field_input(key: Key, store: SharedAppStateStore) {
    
 }
 
-pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), io::Error> {
+pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
   let stdout = io::stdout().into_raw_mode()?;
   let backend = TermionBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
@@ -155,7 +179,7 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
   terminal.clear()?;
   // TODO control this from a separate thread using an Atomic::Bool
 
-  while run.load(Ordering::Acquire) {
+  while GLOBAL_RUN.load(Ordering::Acquire) {
 
     // Update the stateful table from application state
     // Then release the lock
@@ -306,9 +330,6 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
         notification::draw_notification("Query error".to_owned(), "Could not parse query input".to_owned(), f)
       }
 
-      if num_done >= 10 {
-        modal::draw_modal("Confirm".to_owned(), f);
-      }
     })?;
 
     if let Some(Ok(key)) = stdin.next() {
@@ -319,8 +340,8 @@ pub fn ui_loop(store: SharedAppStateStore, run: Arc<AtomicBool>) -> Result<(), i
               _ => MainPageContent::HostsTable
             }
           }
-          Key::Ctrl('c') => run.store(false, Ordering::Release),
-          Key::Char('q') => run.store(false, Ordering::Release),
+          Key::Ctrl('c') => GLOBAL_RUN.store(false, Ordering::Release),
+          Key::Char('q') => GLOBAL_RUN.store(false, Ordering::Release),
           _ => {
             match curr_focus {
               MainPageContent::HostsTable => handle_table_input(key, &mut table_state),
