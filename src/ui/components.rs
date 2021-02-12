@@ -1,17 +1,33 @@
-pub struct UiPage {
-    components: Vec<Box<dyn UiPageComponent>>
-}
+use tui::{
+    Frame,
+    backend::{Backend, TermionBackend},
+};
 
-trait UiPageComponent {}
+use super::page::UiPage;
+use super::modal;
 
 #[derive(Debug)]
 pub enum MainPageContent {
     QueryInput,
     HostsTable,
-    ProgresGauge,
+    ConfirmModal
 }
 
-impl UiPageComponent for MainPageContent {}
+// pub struct MainPage {
+// }
+
+// impl MainPage {
+//     pub fn new() -> Self {
+//         Self {}
+//     }
+// }
+
+// impl<B: Backend> UiPage<B> for MainPage {
+//     fn draw(&self, f: &mut Frame<B>) {
+//         let mut opt = modal::ModalOpt::Yes;
+//         modal::draw_modal("Modal".to_owned(), "Modal text?".to_owned(), &opt, f);
+//     }
+// }
 
 // Make a macro
 // impl UiComponent {

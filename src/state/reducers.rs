@@ -47,6 +47,21 @@ impl Reducer<AppAction> for AppReducer {
         state.hosts = hosts.iter().map(|h| Host::new(*h) ).collect();
         state.search_run = true;
         state
+      },
+
+      AppAction::TableSelect(idx) => {
+        state.table_state.select(Some(idx));
+        state
+      },
+
+      AppAction::ShiftFocus(comp) => {
+        state.curr_focus = comp;
+        state
+      },
+
+      AppAction::SetNotification(notif) => {
+        state.notification = notif;
+        state
       }
 
       _ => state

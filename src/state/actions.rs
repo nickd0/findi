@@ -1,5 +1,7 @@
 use crate::network::ping_result::PingResult;
 use crate::network::host::Host;
+use crate::ui::pages::PageContent;
+use crate::ui::notification::Notification;
 
 use std::net::Ipv4Addr;
 
@@ -14,6 +16,9 @@ pub enum AppAction {
   SetInputErr(bool),
   SetHostSearchRun(bool),
   NewQuery(Vec<Ipv4Addr>),
+  TableSelect(usize),
+  ShiftFocus(PageContent),
+  SetNotification(Option<Notification>),
   RestartQuery,
   IterateFocus
 }

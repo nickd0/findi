@@ -8,6 +8,20 @@ use tui::{
     Frame,
 };
 
+#[derive(Copy, Clone)]
+pub enum NotificationLevel {
+    Info,
+    Warn,
+    Err
+}
+
+#[derive(Clone)]
+pub struct Notification {
+    pub title: String,
+    pub message: String,
+    pub level: NotificationLevel
+}
+
 fn cornered_rect(r: Rect) -> Rect {
     let percent_x = 20;
     let popup_layout = Layout::default()
@@ -34,15 +48,21 @@ fn cornered_rect(r: Rect) -> Rect {
         .split(popup_layout[0])[1]
 }
 
-pub fn draw_notification<B: Backend>(title: String, msg: String, f: &mut Frame<B>) {
+pub fn draw_notification<B: Backend>(notif: Notification, f: &mut Frame<B>) {
     let area = cornered_rect(f.size());
-    let body = Paragraph::new(msg.to_owned())
+    let body = Paragraph::new(notif.title.to_owned())
         .block(
             Block::default()
-                .title(title)
+                .title(notif.title.to_owned())
                 .border_style(
                     Style::default()
-                        .fg(Color::LightRed)
+                        .fg(
+                            match notif.level {
+                                NotificationLevel::Info => Color::LightBlue,
+                                NotificationLevel::Warn => Color::LightRed,
+                                NotificationLevel::Err => Color::Red
+                            }
+                        )
                 )
                 .borders(Borders::ALL)
         );

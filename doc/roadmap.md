@@ -14,6 +14,8 @@ Roadmap
 - [x] Program stop control
 - [ ] New search from within UI (`cidr_input_edit`)
 - [ ] Non-private range/CIDR validation, validate size of range
+- [ ] Filter and sort results by all hosts or only live hosts
+- [ ] Filter results by hostname
 - [ ] Cleanup
 
 ## v0.2.0

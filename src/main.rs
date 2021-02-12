@@ -18,7 +18,7 @@ use ui::ui_loop;
 use network::input_parse;
 use state::store::AppStateStore;
 use state::actions::AppAction;
-use network::host_search;
+use network::init_host_search;
 
 use std::thread;
 use std::process::exit;
@@ -82,7 +82,7 @@ fn main() {
     #[cfg(feature = "ui")]
     let ui_thread = start_ui(shared_store.clone());
 
-    host_search(shared_store.clone());
+    init_host_search(shared_store.clone());
 
     #[cfg(feature = "ui")]
     let _ = ui_thread.join();
