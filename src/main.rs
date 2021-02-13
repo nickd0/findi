@@ -12,30 +12,30 @@ Notes:
 mod network;
 mod ui;
 mod state;
+mod config;
 
 use ui::ui_loop;
-use network::host::{Host};
+use network::input_parse;
 use state::store::AppStateStore;
 use state::actions::AppAction;
+use network::init_host_search;
 
 use std::thread;
 use std::process::exit;
-use std::net::{IpAddr, Ipv4Addr};
-use std::time::Duration;
+use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool};
 use std::env;
 
 use pnet::ipnetwork::IpNetwork;
 use pnet::datalink;
-use threadpool::ThreadPool;
 
-const TP_WORKERS: usize = 100;
+static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
 
 #[allow(dead_code)]
-fn start_ui(store: Arc<Mutex<AppStateStore>>, run: Arc<AtomicBool>) -> thread::JoinHandle<()> {
+fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let _ = ui_loop(store, run);
+        let _ = ui_loop(store);
     })
 }
 
@@ -46,7 +46,6 @@ fn main() {
         .find(|e| {
             e.is_up() && !e.is_loopback() && !e.ips.is_empty()
         });
-    let has_iface = default_iface.is_some();
 
     let mut store = AppStateStore::new();
 
@@ -54,12 +53,11 @@ fn main() {
     let query: String;
 
     if let Some(input) = env::args().nth(1) {
-        // hosts = ip_parse(&input).unwrap_or_default();
-        if let Ok(IpNetwork::V4(ipn)) = input.parse::<IpNetwork>() {
-            hosts = ipn.iter().collect()
-        } else {
-            return println!("Please provide a valid IPv4 CIDR network")
+        match input_parse(&input) {
+            Ok(hs) => hosts = hs,
+            Err(msg) => return println!("{}", msg)
         }
+
         query = input;
 
     } else if default_iface.is_some() {
@@ -80,28 +78,11 @@ fn main() {
     store.dispatch(AppAction::SetQuery(query));
 
     let shared_store = Arc::new(Mutex::new(store));
-    // Should this be part of the central state store?
-    // We gain efficiencies by using an AtomicBool vs
-    // just a bool in a Mutex
-    let run = Arc::new(AtomicBool::new(true));
 
     #[cfg(feature = "ui")]
-    let ui_thread = start_ui(shared_store.clone(), run.clone());
+    let ui_thread = start_ui(shared_store.clone());
 
-    let pool = ThreadPool::new(TP_WORKERS);
-    for host in hosts {
-        if !run.load(Ordering::Acquire) {
-            break;
-        }
-
-        let store_copy = shared_store.clone();
-        thread::sleep(Duration::from_millis(50));
-        pool.execute(move || {
-            let h = Host::host_ping(host);
-            let mut store_lock = store_copy.lock().unwrap();
-            store_lock.dispatch(AppAction::UpdateHost(h));
-        });
-    }
+    init_host_search(shared_store.clone());
 
     #[cfg(feature = "ui")]
     let _ = ui_thread.join();

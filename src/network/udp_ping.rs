@@ -4,7 +4,7 @@ use ::std::io::ErrorKind;
 use std::thread::sleep;
 use super::ping_result::PingResult;
 
-const UDP_PING_PORT: u16 = 39719;
+const UDP_PING_PORT: u16 = 9989;
 
 
 
