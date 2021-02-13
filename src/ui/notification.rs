@@ -22,6 +22,16 @@ pub struct Notification {
     pub level: NotificationLevel
 }
 
+impl Notification {
+    pub fn new(title: &str, message: &str, level: NotificationLevel) -> Self {
+        Self {
+            title: title.to_owned(),
+            message: message.to_owned(),
+            level
+        }
+    }
+}
+
 fn cornered_rect(r: Rect) -> Rect {
     let percent_x = 20;
     let popup_layout = Layout::default()
@@ -50,10 +60,10 @@ fn cornered_rect(r: Rect) -> Rect {
 
 pub fn draw_notification<B: Backend>(notif: Notification, f: &mut Frame<B>) {
     let area = cornered_rect(f.size());
-    let body = Paragraph::new(notif.title.to_owned())
+    let body = Paragraph::new(notif.message)
         .block(
             Block::default()
-                .title(notif.title.to_owned())
+                .title(notif.title)
                 .border_style(
                     Style::default()
                         .fg(

@@ -10,6 +10,7 @@ Roadmap
 - [x] Refactor to use Ipv4Addr everywhere
 - [x] Get network from available interface if no input
 - [ ] NetBIOS host name resolution
+- [ ] Create a custom Event enum that encapsulates termion Events/Keys and custom events like ModalYes etc
 - [ ] Tests setup
 - [x] Program stop control
 - [ ] New search from within UI (`cidr_input_edit`)

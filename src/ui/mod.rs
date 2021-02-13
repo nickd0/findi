@@ -3,7 +3,7 @@ TODO: encapsulte all these ui components so we don't have to pass around
 things like `curr_focus`, etc in the handler functions
 */
 
-mod modal;
+pub mod modal;
 pub mod notification;
 pub mod pages;
 
@@ -22,6 +22,8 @@ use tui::{
     backend::TermionBackend,
     Terminal,
 };
+
+use std::ops::DerefMut;
 
 pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
     let stdout = io::stdout().into_raw_mode()?;
@@ -47,6 +49,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
         // Clone for now, but maybe we shouldnt drop the store lock until the end of the loop?
         // TODO: use a borrow and drop the lock_store later?
         let notif = lock_store.state.notification.clone();
+        let modal = lock_store.state.modal.clone();
         drop(lock_store);
 
         // Main draw loop
@@ -58,14 +61,30 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
             if let Some(notif) = notif {
                 notification::draw_notification(notif, f)
             }
+
+            if let Some(modal) = modal {
+                modal::draw_modal(modal, f)
+            }
         })?;
 
         // Global events handler
+        // TODO: should these just return AppAction's and then we can
+        // dispatch from here?
+        //
+        // TODO: profile deref-ing vs cloning the Arc here
+        // 
         if let Some(Ok(key)) = stdin.next() {
-            handle_page_events(&curr_page, key, store.clone());
-            match key {
-                    Key::Ctrl('c') | Key::Esc => GLOBAL_RUN.store(false, Ordering::Release),
-                    _ => {}
+            let mut lstore = store.lock().unwrap();
+            if lstore.state.modal.is_some() {
+                modal::handle_modal_event(key, lstore.deref_mut())
+            } else {
+
+                handle_page_events(&curr_page, key, lstore.deref_mut());
+
+                match key {
+                        Key::Ctrl('c') | Key::Esc => GLOBAL_RUN.store(false, Ordering::Release),
+                        _ => {}
+                }
             }
         }
     }

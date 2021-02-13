@@ -1,6 +1,7 @@
 use super::actions::{Action, AppAction};
 use super::application_state::ApplicationState;
 use crate::network::host::{Host};
+use crate::ui::pages::PageContent;
 
 pub trait Reducer<T: Action> {
   fn reduce(action: T, state: ApplicationState) -> ApplicationState;
@@ -62,7 +63,12 @@ impl Reducer<AppAction> for AppReducer {
       AppAction::SetNotification(notif) => {
         state.notification = notif;
         state
-      }
+      },
+
+      AppAction::SetModal(modal) => {
+        state.modal = modal;
+        state
+      },
 
       _ => state
     }

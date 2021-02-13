@@ -2,6 +2,7 @@ use crate::network::ping_result::PingResult;
 use crate::network::host::Host;
 use crate::ui::pages::PageContent;
 use crate::ui::notification::Notification;
+use crate::ui::modal::Modal;
 
 use std::net::Ipv4Addr;
 
@@ -19,6 +20,7 @@ pub enum AppAction {
   TableSelect(usize),
   ShiftFocus(PageContent),
   SetNotification(Option<Notification>),
+  SetModal(Option<Modal>),
   RestartQuery,
   IterateFocus
 }

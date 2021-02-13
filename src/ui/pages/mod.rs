@@ -4,7 +4,7 @@ use tui::{
 };
 use termion::event::{Key};
 
-use crate::state::store::SharedAppStateStore;
+use crate::state::store::{SharedAppStateStore, AppStateStore};
 
 pub mod main_page;
 
@@ -18,7 +18,7 @@ pub fn draw_page<B: Backend>(curr_page: &Page, store: SharedAppStateStore, f: &m
     }
 }
 
-pub fn handle_page_events(curr_page: &Page, key: Key, store: SharedAppStateStore) {
+pub fn handle_page_events(curr_page: &Page, key: Key, store: &mut AppStateStore) {
     match curr_page {
         Page::MainPage => main_page::handle_main_page_event(key, store)
     }

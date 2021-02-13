@@ -7,8 +7,9 @@ use tui::{
     Frame,
 };
 
-use crate::state::store::SharedAppStateStore;
+use crate::state::store::{SharedAppStateStore, AppStateStore};
 use crate::ui::notification::{Notification, NotificationLevel};
+use crate::ui::modal::{Modal, ModalType};
 use crate::state::actions::AppAction;
 use crate::network::{
     input_parse,
@@ -103,7 +104,6 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
     let query = lstore.state.query.clone();
     let parse_err = lstore.state.input_err;
     let curr_focus = lstore.state.curr_focus;
-    let hosts = &lstore.state.hosts;
 
     let rects = Layout::default()
         .direction(Direction::Vertical)
@@ -147,18 +147,26 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
     };
 
     // Render Gauge //
+    let hosts = &lstore.state.hosts;
     let num_done = hosts
         .iter()
         .filter(|&h| h.ping_done)
         .collect::<Vec<&Host>>()
         .len();
+    
+    let pcnt_done = (num_done * 100 / hosts.len()) as u16;
 
     let gauge = Gauge::default()
         .block(Block::default().title("Hosts scanned").borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Yellow))
-        .percent((num_done * 100 / hosts.len()) as u16);
+        .percent(pcnt_done);
     
     f.render_widget(gauge, rects[2]);
+
+    // if pcnt_done == 100 {
+    //     let notif = Notification::new("Statue", "Host search complete", NotificationLevel::Info);
+    //     lstore.dispatch(AppAction::SetNotification(Some(notif)))
+    // }
 
     // Render host table // 
     let selected_style = Style::default()
@@ -243,8 +251,8 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 }
 
 // Page events handler
-pub fn handle_main_page_event(key: Key, store: SharedAppStateStore) {
-    let mut lstore = store.lock().unwrap();
+pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
+    // let mut lstore = store.lock().unwrap();
     match lstore.state.curr_focus {
         PageContent::HostTable => {
             let s_table = StatefulTable::new(&lstore.state.table_state, &lstore.state.hosts);
@@ -274,19 +282,24 @@ pub fn handle_main_page_event(key: Key, store: SharedAppStateStore) {
                     let parsed = input_parse(&lstore.state.query);
                     lstore.dispatch(AppAction::SetInputErr(parsed.is_err()));
                     if !parsed.is_err() {
-                        lstore.dispatch(AppAction::SetHostSearchRun(false));
-                        lstore.dispatch(AppAction::BuildHosts(parsed.unwrap()));
-                        lstore.dispatch(AppAction::SetHostSearchRun(true));
-                        init_host_search(store.clone())
+                        // lstore.dispatch(AppAction::SetHostSearchRun(false));
+                        // lstore.dispatch(AppAction::BuildHosts(parsed.unwrap()));
+                        // lstore.dispatch(AppAction::SetHostSearchRun(true));
+                        let modal = Modal::new(
+                            "Confirm",
+                            "Are you sure you want to start a new query? This will kill the current query.",
+                            ModalType::YesNo
+                        );
+                        lstore.dispatch(AppAction::SetModal(Some(modal)))
+                        // init_host_search(store.clone())
                     } else {
                         lstore.dispatch(AppAction::SetNotification(
-                            Some(Notification {
-                                title: "Notification".to_owned(),
-                                message: "Could not parse input query".to_owned(),
-                                level: NotificationLevel::Warn
-                            })
-                            )
-                        )
+                            Some(Notification::new(
+                                "Notification",
+                                "Could not parse input query",
+                                NotificationLevel::Warn
+                            ))
+                        ))
                     }
                 },
 
