@@ -76,14 +76,14 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
         if let Some(Ok(key)) = stdin.next() {
             let mut lstore = store.lock().unwrap();
             if lstore.state.modal.is_some() {
-                modal::handle_modal_event(key, lstore.deref_mut())
+                modal::handle_modal_event(key, lstore.deref_mut(), store.clone())
             }
 
-            handle_page_events(&curr_page, key, lstore.deref_mut());
+            handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
 
             match key {
-                    Key::Ctrl('c') | Key::Esc => GLOBAL_RUN.store(false, Ordering::Release),
-                    _ => {}
+                Key::Ctrl('c') | Key::Esc => GLOBAL_RUN.store(false, Ordering::Release),
+                _ => {}
             }
         }
     }

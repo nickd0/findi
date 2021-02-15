@@ -13,7 +13,7 @@ Roadmap
 - [ ] Create a custom Event enum that encapsulates termion Events/Keys and custom events like ModalYes etc
 - [ ] Tests setup
 - [x] Program stop control
-- [ ] New search from within UI (`cidr_input_edit`)
+- [x] New search from within UI (`cidr_input_edit`)
 - [ ] Non-private range/CIDR validation, validate size of range
 - [ ] Filter and sort results by all hosts or only live hosts
 - [ ] Filter results by hostname

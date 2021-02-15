@@ -8,7 +8,7 @@ pub type SharedAppStateStore = Arc<Mutex<AppStateStore>>;
 
 pub struct AppStateStore {
   pub state: ApplicationState,
-  dispatch_lock: Arc<Mutex<bool>>
+  dispatch_lock: Arc<Mutex<bool>>,
 }
 
 // TODO: need blocking read/write funcs for easier
@@ -19,7 +19,7 @@ impl AppStateStore {
   pub fn new() -> AppStateStore {
     AppStateStore {
       state: Default::default(),
-      dispatch_lock: Default::default()
+      dispatch_lock: Default::default(),
     }
   }
 

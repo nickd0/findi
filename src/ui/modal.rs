@@ -161,7 +161,7 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
     f.render_widget(no_btn, btn_layout_x[3]);
 }
 
-pub fn handle_modal_event(key: Key, store: &mut AppStateStore) {
+pub fn handle_modal_event(key: Key, store: &mut AppStateStore, _: SharedAppStateStore) {
     match key {
         Key::BackTab | Key::Char('\t') => {
             let modal = store.state.modal.as_ref().unwrap();

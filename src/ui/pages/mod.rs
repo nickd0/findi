@@ -18,9 +18,9 @@ pub fn draw_page<B: Backend>(curr_page: &Page, store: SharedAppStateStore, f: &m
     }
 }
 
-pub fn handle_page_events(curr_page: &Page, key: Key, store: &mut AppStateStore) {
+pub fn handle_page_events(curr_page: &Page, key: Key, store: &mut AppStateStore, store_mtx: SharedAppStateStore) {
     match curr_page {
-        Page::MainPage => main_page::handle_main_page_event(key, store)
+        Page::MainPage => main_page::handle_main_page_event(key, store, store_mtx)
     }
 }
 

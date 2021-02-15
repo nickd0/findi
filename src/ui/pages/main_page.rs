@@ -246,11 +246,11 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 }
 
 // Page events handler
-pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
-    // let mut lstore = store.lock().unwrap();
-    match lstore.state.curr_focus {
+pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: SharedAppStateStore) {
+    // let mut store = store.lock().unwrap();
+    match store.state.curr_focus {
         PageContent::HostTable => {
-            let s_table = StatefulTable::new(&lstore.state.table_state, &lstore.state.hosts);
+            let s_table = StatefulTable::new(&store.state.table_state, &store.state.hosts);
             if let Some(table_idx) = match key {
                 // Char inputs
                 Key::Down | Key::Char('j') => s_table.next(),
@@ -260,15 +260,15 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
 
                 // Focus shift
                 Key::Char('\t') | Key::BackTab => {
-                    if lstore.state.modal.is_none() {
-                        lstore.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
+                    if store.state.modal.is_none() {
+                        store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
                     }
                     None
                 },
 
                 _ => None
             } {
-                lstore.dispatch(AppAction::TableSelect(table_idx))
+                store.dispatch(AppAction::TableSelect(table_idx))
             }
         },
 
@@ -276,38 +276,41 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
             match key {
                 // TODO: Don't love is_none check, but do live that events bubble through the UI
                 Key::Char('\t') | Key::BackTab => {
-                    if lstore.state.modal.is_none() {
-                        lstore.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
+                    if store.state.modal.is_none() {
+                        store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
                     }
                 },
 
                 Key::Backspace => {
-                    let qlen = lstore.state.query.len();
+                    let qlen = store.state.query.len();
                     if qlen > 0 {
-                        let q = lstore.state.query[..qlen - 1].to_owned();
-                        lstore.dispatch(AppAction::SetQuery(q));
-                        lstore.dispatch(AppAction::SetNotification(None))
+                        let q = store.state.query[..qlen - 1].to_owned();
+                        store.dispatch(AppAction::SetQuery(q));
+                        store.dispatch(AppAction::SetNotification(None))
                     }
                 },
 
                 Key::Char('\n') => {
-                    let parsed = input_parse(&lstore.state.query);
-                    lstore.dispatch(AppAction::SetInputErr(parsed.is_err()));
+                    let parsed = input_parse(&store.state.query);
+                    store.dispatch(AppAction::SetInputErr(parsed.is_err()));
                     // Check if modal is visible and YES is selected, then parse and send hosts
                     match parsed {
-                        Ok(_) => {
-                            if lstore.state.modal.is_some() {
+                        Ok(hosts) => {
+                            if store.state.modal.is_some() {
                                 // Assuming YES is selected for now
-                                lstore.dispatches(vec![
+                                store.dispatches(vec![
                                     AppAction::SetHostSearchRun(false),
                                     AppAction::SetModal(None),
-                                    AppAction::BuildHosts(parsed.unwrap()),
+                                    AppAction::BuildHosts(hosts),
+                                    AppAction::ShiftFocus(PageContent::HostTable)
                                 ]);
-                                // TODO: start the host search, but we need the mutex and we only have
-                                // a ref to the store from here
+                                // TODO: Should this be done from some sort of Thunk action?
+                                // Problem is that the store is wrapped in a mutex currently
+                                // and so does not have access to a thread-safe reference
+                                init_host_search(store_mtx.clone())
                             } else {
                                 let mut msg = String::from("Are you sure you want to start a new query?");
-                                if lstore.state.query_state {
+                                if store.state.query_state {
                                     msg.push_str(" This will discard the current results.")
                                 } else {
                                     msg.push_str(" This will kill the current query.")
@@ -317,14 +320,14 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
                                     &msg,
                                     ModalType::YesNo
                                 );
-                                lstore.dispatch(AppAction::SetModal(Some(modal)))
+                                store.dispatch(AppAction::SetModal(Some(modal)))
                             }
                         },
                         
                         Err(msg) => {
-                            lstore.dispatch(AppAction::SetNotification(
+                            store.dispatch(AppAction::SetNotification(
                                 Some(Notification::new(
-                                    "Notification",
+                                    "Error",
                                     &msg,
                                     NotificationLevel::Warn
                                 ))
@@ -336,10 +339,10 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
 
                 Key::Char(c) => {
                     if c.is_numeric() || c == '.' || c == '/' {
-                        let mut q = lstore.state.query.to_owned();
+                        let mut q = store.state.query.to_owned();
                         q.push(c);
-                        lstore.dispatch(AppAction::SetQuery(q));
-                        lstore.dispatch(AppAction::SetNotification(None))
+                        store.dispatch(AppAction::SetQuery(q));
+                        store.dispatch(AppAction::SetNotification(None))
                     }
                 },
                 _ => {}
@@ -348,15 +351,4 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
 
         _ => {}
     }
-
-    // match key {
-    //     Key::Char('\t') | Key::BackTab => {
-    //         match lstore.state.curr_focus {
-    //             PageContent::HostTable => lstore.dispatch(AppAction::ShiftFocus(PageContent::QueryInput)),
-    //             PageContent::QueryInput => lstore.dispatch(AppAction::ShiftFocus(PageContent::HostTable)),
-    //             _ => {}
-    //         }
-    //     },
-    //     _ => {}
-    // }
 }
