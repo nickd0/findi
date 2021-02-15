@@ -11,6 +11,7 @@ use crate::ui::{
 pub struct ApplicationState {
     pub hosts: HostVec,
     pub query: String,
+    pub query_state: bool,
     pub input_err: bool,
     pub search_run: bool,
     pub curr_focus: PageContent,

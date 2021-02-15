@@ -76,6 +76,7 @@ fn main() {
 
     store.dispatch(AppAction::BuildHosts(hosts.clone()));
     store.dispatch(AppAction::SetQuery(query));
+    store.dispatch(AppAction::SetHostSearchRun(true));
 
     let shared_store = Arc::new(Mutex::new(store));
 

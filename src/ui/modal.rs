@@ -21,12 +21,11 @@ pub enum ModalType {
 }
 
 #[derive(Clone)]
-pub struct Modal
-{
+pub struct Modal {
     pub modal_type: ModalType,
     pub title: String,
     pub message: String,
-    pub selected: ModalOpt
+    pub selected: ModalOpt,
 }
 
 impl Modal {
@@ -170,9 +169,20 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore) {
             mclone.selected.mut_toggle();
             store.dispatch(AppAction::SetModal(Some(mclone)))
         },
+
+        Key::Char('\n') => {
+            match store.state.modal.as_ref().unwrap().selected {
+                ModalOpt::No => {
+                    store.dispatch(AppAction::SetModal(None))
+                },
+                _ => {}
+            }
+        },
+
         Key::Esc => {
             store.dispatch(AppAction::SetModal(None))
-        }
+        },
+
         _ => {}
     }
 }

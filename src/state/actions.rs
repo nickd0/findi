@@ -21,6 +21,8 @@ pub enum AppAction {
   ShiftFocus(PageContent),
   SetNotification(Option<Notification>),
   SetModal(Option<Modal>),
+  StartHostQuery(Box<dyn Fn()>),
+  QueryComplete,
   RestartQuery,
   IterateFocus
 }

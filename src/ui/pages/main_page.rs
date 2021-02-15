@@ -147,14 +147,14 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
     };
 
     // Render Gauge //
-    let hosts = &lstore.state.hosts;
-    let num_done = hosts
+    let hosts_len = &lstore.state.hosts.len();
+    let num_done = &lstore.state.hosts
         .iter()
         .filter(|&h| h.ping_done)
         .collect::<Vec<&Host>>()
         .len();
     
-    let pcnt_done = (num_done * 100 / hosts.len()) as u16;
+    let pcnt_done = (num_done * 100 / hosts_len) as u16;
 
     let gauge = Gauge::default()
         .block(Block::default().title("Hosts scanned").borders(Borders::ALL))
@@ -162,11 +162,6 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         .percent(pcnt_done);
     
     f.render_widget(gauge, rects[2]);
-
-    // if pcnt_done == 100 {
-    //     let notif = Notification::new("Statue", "Host search complete", NotificationLevel::Info);
-    //     lstore.dispatch(AppAction::SetNotification(Some(notif)))
-    // }
 
     // Render host table // 
     let selected_style = Style::default()
@@ -186,7 +181,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
           .height(1)
           .bottom_margin(1);
 
-      let rows = hosts.iter().map(|host| {
+      let rows = lstore.state.hosts.iter().map(|host| {
         let mut style = Style::default();
         let mut status_cell = Cell::from("?");
         if let Some(dur) = host.ping_res {
@@ -257,10 +252,20 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
         PageContent::HostTable => {
             let s_table = StatefulTable::new(&lstore.state.table_state, &lstore.state.hosts);
             if let Some(table_idx) = match key {
+                // Char inputs
                 Key::Down | Key::Char('j') => s_table.next(),
                 Key::Up | Key::Char('k') => s_table.prev(),
                 Key::Char(' ') | Key::Char('J') | Key::PageDown => s_table.pgdn(),
                 Key::Ctrl(' ') | Key::Char('K') | Key::PageUp => s_table.pgup(),
+
+                // Focus shift
+                Key::Char('\t') | Key::BackTab => {
+                    if lstore.state.modal.is_none() {
+                        lstore.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
+                    }
+                    None
+                },
+
                 _ => None
             } {
                 lstore.dispatch(AppAction::TableSelect(table_idx))
@@ -269,6 +274,13 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
 
         PageContent::QueryInput => {
             match key {
+                // TODO: Don't love is_none check, but do live that events bubble through the UI
+                Key::Char('\t') | Key::BackTab => {
+                    if lstore.state.modal.is_none() {
+                        lstore.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
+                    }
+                },
+
                 Key::Backspace => {
                     let qlen = lstore.state.query.len();
                     if qlen > 0 {
@@ -281,30 +293,49 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
                 Key::Char('\n') => {
                     let parsed = input_parse(&lstore.state.query);
                     lstore.dispatch(AppAction::SetInputErr(parsed.is_err()));
-                    if !parsed.is_err() {
-                        // lstore.dispatch(AppAction::SetHostSearchRun(false));
-                        // lstore.dispatch(AppAction::BuildHosts(parsed.unwrap()));
-                        // lstore.dispatch(AppAction::SetHostSearchRun(true));
-                        let modal = Modal::new(
-                            "Confirm",
-                            "Are you sure you want to start a new query? This will kill the current query.",
-                            ModalType::YesNo
-                        );
-                        lstore.dispatch(AppAction::SetModal(Some(modal)))
-                        // init_host_search(store.clone())
-                    } else {
-                        lstore.dispatch(AppAction::SetNotification(
-                            Some(Notification::new(
-                                "Notification",
-                                "Could not parse input query",
-                                NotificationLevel::Warn
+                    // Check if modal is visible and YES is selected, then parse and send hosts
+                    match parsed {
+                        Ok(_) => {
+                            if lstore.state.modal.is_some() {
+                                // Assuming YES is selected for now
+                                lstore.dispatches(vec![
+                                    AppAction::SetHostSearchRun(false),
+                                    AppAction::SetModal(None),
+                                    AppAction::BuildHosts(parsed.unwrap()),
+                                ]);
+                                // TODO: start the host search, but we need the mutex and we only have
+                                // a ref to the store from here
+                            } else {
+                                let mut msg = String::from("Are you sure you want to start a new query?");
+                                if lstore.state.query_state {
+                                    msg.push_str(" This will discard the current results.")
+                                } else {
+                                    msg.push_str(" This will kill the current query.")
+                                }
+                                let modal = Modal::new(
+                                    "Confirm",
+                                    &msg,
+                                    ModalType::YesNo
+                                );
+                                lstore.dispatch(AppAction::SetModal(Some(modal)))
+                            }
+                        },
+                        
+                        Err(msg) => {
+                            lstore.dispatch(AppAction::SetNotification(
+                                Some(Notification::new(
+                                    "Notification",
+                                    &msg,
+                                    NotificationLevel::Warn
+                                ))
                             ))
-                        ))
+
+                        }
                     }
                 },
 
                 Key::Char(c) => {
-                    if !c.is_ascii_control() {
+                    if c.is_numeric() || c == '.' || c == '/' {
                         let mut q = lstore.state.query.to_owned();
                         q.push(c);
                         lstore.dispatch(AppAction::SetQuery(q));
@@ -318,14 +349,14 @@ pub fn handle_main_page_event(key: Key, lstore: &mut AppStateStore) {
         _ => {}
     }
 
-    match key {
-        Key::Char('\t') | Key::BackTab => {
-            match lstore.state.curr_focus {
-                PageContent::HostTable => lstore.dispatch(AppAction::ShiftFocus(PageContent::QueryInput)),
-                PageContent::QueryInput => lstore.dispatch(AppAction::ShiftFocus(PageContent::HostTable)),
-                _ => {}
-            }
-        },
-        _ => {}
-    }
+    // match key {
+    //     Key::Char('\t') | Key::BackTab => {
+    //         match lstore.state.curr_focus {
+    //             PageContent::HostTable => lstore.dispatch(AppAction::ShiftFocus(PageContent::QueryInput)),
+    //             PageContent::QueryInput => lstore.dispatch(AppAction::ShiftFocus(PageContent::HostTable)),
+    //             _ => {}
+    //         }
+    //     },
+    //     _ => {}
+    // }
 }

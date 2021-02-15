@@ -35,6 +35,15 @@ impl AppStateStore {
     self.state = AppReducer::reduce(action, self.state.clone());
     *dplocked = false;
   }
+
+  pub fn dispatches(&mut self, actions: Vec<AppAction>) {
+    let mut dplocked = self.dispatch_lock.lock().unwrap();
+    *dplocked = true;
+    for action in actions {
+      self.state = AppReducer::reduce(action, self.state.clone());
+    }
+    *dplocked = false;
+  }
 }
 
 pub fn store_dispatch(store: SharedAppStateStore, action: AppAction) {

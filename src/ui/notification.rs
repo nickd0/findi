@@ -3,8 +3,9 @@
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Block, Borders, Clear, Paragraph},
-    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
+    style::{Color, Style},
+    text::{Spans, Span},
     Frame,
 };
 
@@ -23,6 +24,14 @@ pub struct Notification {
 }
 
 impl Notification {
+    pub fn info(title: &str, message: &str) -> Self {
+        Self {
+            title: title.to_owned(),
+            message: message.to_owned(),
+            level: NotificationLevel::Info
+        }
+    }
+
     pub fn new(title: &str, message: &str, level: NotificationLevel) -> Self {
         Self {
             title: title.to_owned(),
@@ -60,7 +69,10 @@ fn cornered_rect(r: Rect) -> Rect {
 
 pub fn draw_notification<B: Backend>(notif: Notification, f: &mut Frame<B>) {
     let area = cornered_rect(f.size());
-    let body = Paragraph::new(notif.message)
+
+    let msg_span = Spans::from(Span::from(notif.message));
+    let body = Paragraph::new(msg_span)
+        .wrap(Wrap { trim: true })
         .block(
             Block::default()
                 .title(notif.title)

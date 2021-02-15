@@ -1,7 +1,7 @@
 use super::actions::{Action, AppAction};
 use super::application_state::ApplicationState;
 use crate::network::host::{Host};
-use crate::ui::pages::PageContent;
+use crate::ui::notification::Notification;
 
 pub trait Reducer<T: Action> {
   fn reduce(action: T, state: ApplicationState) -> ApplicationState;
@@ -41,6 +41,10 @@ impl Reducer<AppAction> for AppReducer {
 
       AppAction::SetHostSearchRun(run) => {
         state.search_run = run;
+        if run {
+          let notif = Notification::info("Status", format!("Querying {} hosts...", state.hosts.len()).as_ref());
+          state.notification = Some(notif)
+        }
         state
       },
 
@@ -69,6 +73,14 @@ impl Reducer<AppAction> for AppReducer {
         state.modal = modal;
         state
       },
+
+      AppAction::QueryComplete => {
+        let notif = Notification::info("Status", "Host search complete");
+        state.query_state = true;
+        state.search_run = false;
+        state.notification = Some(notif);
+        state
+      }
 
       _ => state
     }

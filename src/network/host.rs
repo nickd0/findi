@@ -39,6 +39,7 @@ pub struct Host {
 impl Host {
   pub fn host_ping(ip: Ipv4Addr) -> Host {
     let mut host = Host::new(ip);
+    eprintln!("Pinging {:?}", ip);
     host.ping();
     // TODO: do multicast lookup in a different thread?
     // Standardize error
