@@ -3,6 +3,7 @@ TODO: encapsulte all these ui components so we don't have to pass around
 things like `curr_focus`, etc in the handler functions
 */
 
+pub mod components;
 pub mod modal;
 pub mod notification;
 pub mod pages;

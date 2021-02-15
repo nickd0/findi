@@ -1,6 +1,7 @@
 use tui::widgets::TableState;
 
 use crate::network::host::HostVec;
+use crate::ui::components::search_filter::SearchFilterOption;
 use crate::ui::{
     pages::PageContent,
     notification::Notification,
@@ -18,6 +19,7 @@ pub struct ApplicationState {
     pub table_state: TableState,
     pub notification: Option<Notification>,
     pub modal: Option<Modal>,
+    pub search_filter_opt: SearchFilterOption
     // TODO: should ui focus be part of application state?
     // pub focus: UiComponent
 }

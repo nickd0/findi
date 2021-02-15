@@ -5,7 +5,10 @@ use crate::network::{
     host::Host,
     init_host_search
 };
-use crate::ui::pages::PageContent;
+use crate::ui::{
+    pages::PageContent,
+    components::search_filter::SearchFilterOption
+};
 use crate::ui::notification::Notification;
 use crate::ui::modal::Modal;
 
@@ -26,6 +29,7 @@ pub enum AppAction {
     ShiftFocus(PageContent),
     SetNotification(Option<Notification>),
     SetModal(Option<Modal>),
+    SetSearchFilter(SearchFilterOption),
     QueryComplete,
     RestartQuery,
     IterateFocus

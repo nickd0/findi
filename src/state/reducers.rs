@@ -80,6 +80,11 @@ impl Reducer<AppAction> for AppReducer {
         state.search_run = false;
         state.notification = Some(notif);
         state
+      },
+
+      AppAction::SetSearchFilter(opt) => {
+        state.search_filter_opt = opt;
+        state
       }
 
       _ => state

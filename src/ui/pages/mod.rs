@@ -28,6 +28,7 @@ pub fn handle_page_events(curr_page: &Page, key: Key, store: &mut AppStateStore,
 pub enum PageContent {
     QueryInput,
     HostTable,
+    SearchFilters,
     ConfirmModal
 }
 

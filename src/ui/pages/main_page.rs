@@ -8,7 +8,10 @@ use tui::{
 };
 
 use crate::state::store::{SharedAppStateStore, AppStateStore};
-use crate::ui::notification::{Notification, NotificationLevel};
+use crate::ui::{
+    notification::{Notification, NotificationLevel},
+    components::search_filter::{draw_search_filter, SearchFilterOption}
+};
 use crate::ui::modal::{Modal, ModalType};
 use crate::state::actions::AppAction;
 use crate::network::{
@@ -22,6 +25,10 @@ use crate::ui::{
 
 use termion::event::{Key};
 
+use std::iter::Filter;
+use std::slice::Iter;
+
+
 enum MainPageContent {
     QueryInput,
     HostTable,
@@ -31,11 +38,11 @@ const JUMP_LEN: usize = 20;
 
 pub struct StatefulTable<'a> {
   state: &'a TableState,
-  items: &'a HostVec
+  items: &'a Vec<&'a Host>
 }
 
 impl<'a> StatefulTable<'a> {
-    pub fn new(state: &'a TableState, items: &'a HostVec) -> StatefulTable<'a> {
+    pub fn new(state: &'a TableState, items: &'a Vec<&'a Host>) -> StatefulTable<'a> {
         StatefulTable {
             state,
             items,
@@ -120,6 +127,16 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
     let selected_border_style = Style::default().fg(Color::Yellow);
     let default_border_style = Style::default().fg(Color::White);
 
+    let first_row = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(50),
+                Constraint::Percentage(50),
+            ].as_ref()
+        )
+        .split(rects[0]);
+
     let input = Paragraph::new(Span::from(query.to_owned()))
         .block(
             Block::default()
@@ -139,7 +156,10 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
                 .title("Host search")
         );
 
-    f.render_widget(input, rects[0]);
+    f.render_widget(input, first_row[0]);
+
+    // Render filter options
+    draw_search_filter(&*lstore, first_row[1], f);
 
     match curr_focus {
         PageContent::QueryInput => f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1),
@@ -165,62 +185,62 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 
     // Render host table // 
     let selected_style = Style::default()
-          .bg(Color::Black)
-          .fg(Color::Yellow)
-          .add_modifier(Modifier::REVERSED);
+        .bg(Color::Black)
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::REVERSED);
 
-      let normal_style = Style::default()
-          .bg(Color::Rgb(23, 112, 191));
+    let normal_style = Style::default()
+        .bg(Color::Rgb(23, 112, 191));
 
-      let header_cells = ["Host IP", "Hostname", "Status", "Ping type", "Ports open"]
-          .iter()
-          .map(|h| Cell::from(*h));
+    let header_cells = ["Host IP", "Hostname", "Status", "Ping type", "Ports open"]
+        .iter()
+        .map(|h| Cell::from(*h));
 
-      let header = Row::new(header_cells)
-          .style(normal_style)
-          .height(1)
-          .bottom_margin(1);
-
-      let rows = lstore.state.hosts.iter().map(|host| {
+    let header = Row::new(header_cells)
+        .style(normal_style)
+        .height(1)
+        .bottom_margin(1);
+    
+    let rows = get_selected_hosts(&lstore.state.hosts, &lstore.state.search_filter_opt).map(|host| {
         let mut style = Style::default();
         let mut status_cell = Cell::from("?");
         if let Some(dur) = host.ping_res {
-          status_cell = Cell::from(format!("✓ ({:?} ms)", dur.as_millis()));
-          style = style.fg(Color::Green);
+            status_cell = Cell::from(format!("✓ ({:?} ms)", dur.as_millis()));
+            style = style.fg(Color::Green);
         }
 
         let mut ping_cell = Cell::from("--");
         let mut port_cell = Cell::from("--");
         let mut host_cell = Cell::from("--");
         if let Some(ping_type) = host.ping_type {
-          ping_cell = Cell::from(ping_type.to_string());
+            ping_cell = Cell::from(ping_type.to_string());
 
-          match ping_type {
-            PingType::TCP => port_cell = Cell::from(
-              host.tcp_ports.iter()
-                  .map(|p| p.to_string())
-                  .collect::<Vec<String>>()
-                  .join(",")
-            ),
-            _ => {}
-          }
+            match ping_type {
+                PingType::TCP => port_cell = Cell::from(
+                host.tcp_ports.iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+                ),
+                _ => {}
+            }
         }
 
         if let Some(host_name) = &host.host_name {
-          match host_name {
-            Ok(hn) => {
-              style = style.fg(Color::Green);
-              host_cell = Cell::from(hn.to_string())
-            },
-            Err(_) => host_cell = Cell::from("x")
-          }
+            match host_name {
+                Ok(hn) => {
+                style = style.fg(Color::Green);
+                host_cell = Cell::from(hn.to_string())
+                },
+                Err(_) => host_cell = Cell::from("x")
+            }
         }
 
         let cells = vec![Cell::from(host.ip.to_string()), host_cell, status_cell, ping_cell, port_cell];
         Row::new(cells).style(style)
-      });
+    });
 
-      let table_block = Block::default()
+    let table_block = Block::default()
         .borders(Borders::ALL)
         .border_style(
           match curr_focus {
@@ -230,19 +250,19 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         )
         .title("Hosts");
 
-      let t = Table::new(rows)
-          .header(header)
-          .block(table_block)
-          .highlight_style(selected_style)
-          .widths(&[
+    let t = Table::new(rows)
+        .header(header)
+        .block(table_block)
+        .highlight_style(selected_style)
+        .widths(&[
             Constraint::Length(18),
             Constraint::Percentage(30),
             Constraint::Length(15),
             Constraint::Length(10),
             Constraint::Max(10)
-          ]);
+        ]);
 
-      f.render_stateful_widget(t, rects[1], &mut lstore.state.table_state);
+    f.render_stateful_widget(t, rects[1], &mut lstore.state.table_state);
 }
 
 // Page events handler
@@ -250,7 +270,8 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
     // let mut store = store.lock().unwrap();
     match store.state.curr_focus {
         PageContent::HostTable => {
-            let s_table = StatefulTable::new(&store.state.table_state, &store.state.hosts);
+            let s_hosts = get_selected_hosts(&store.state.hosts, &store.state.search_filter_opt).collect();
+            let s_table = StatefulTable::new(&store.state.table_state, &s_hosts);
             if let Some(table_idx) = match key {
                 // Char inputs
                 Key::Down | Key::Char('j') => s_table.next(),
@@ -272,12 +293,37 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
             }
         },
 
-        PageContent::QueryInput => {
+        PageContent::SearchFilters => {
             match key {
                 // TODO: Don't love is_none check, but do live that events bubble through the UI
                 Key::Char('\t') | Key::BackTab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
+                    }
+                },
+
+                Key::Down | Key::Up | Key::Char(' ') => {
+                    match store.state.search_filter_opt {
+                        SearchFilterOption::ShowFound => store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowAll)),
+                        SearchFilterOption::ShowAll => {
+                            // Reset table select index on filter
+                            store.dispatches(vec![
+                                AppAction::TableSelect(0),
+                                AppAction::SetSearchFilter(SearchFilterOption::ShowFound)
+                            ]);
+                        },
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        PageContent::QueryInput => {
+            match key {
+                // TODO: Don't love is_none check, but do live that events bubble through the UI
+                Key::Char('\t') | Key::BackTab => {
+                    if store.state.modal.is_none() {
+                        store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters))
                     }
                 },
 
@@ -351,4 +397,14 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
 
         _ => {}
     }
+}
+
+fn get_selected_hosts<'a>(hosts: &'a HostVec, search_opt: &'a SearchFilterOption) -> impl Iterator<Item = &'a Host> {
+    hosts.iter().filter(move |&h| {
+        if matches!(search_opt, SearchFilterOption::ShowFound) {
+            h.ping_res.is_some()
+        } else {
+            true
+        }
+    })
 }
