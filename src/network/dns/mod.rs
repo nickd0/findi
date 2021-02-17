@@ -17,6 +17,8 @@ All multicast groups are in  224.0.0.0 through 239.255.255.255
 mDNS multicast group is on 224.0.0.251
 */
 
+pub mod netbios;
+
 use bincode;
 use bincode::config::{DefaultOptions, Options};
 use serde::{Deserialize, Serialize};
@@ -52,6 +54,7 @@ impl Default for DnsPacketHeader {
 #[repr(u16)]
 pub enum DnsQuestionType {
     PTR = 0x0C,
+    NBSTAT = 0x21
 }
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
@@ -60,6 +63,8 @@ pub enum DnsQuestionClass {
     IN = 0x01,
 }
 
+// TODO use an impl DnsAddressEncode for the encoded addr
+// rather than a hardcoded DnsArpaAddr type
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DnsQuestion {
     #[serde(skip_serializing)]
@@ -70,6 +75,10 @@ pub struct DnsQuestion {
 
     qtype: DnsQuestionType,
     qclass: DnsQuestionClass,
+}
+
+trait DnsAddressEncode {
+    fn encode(ip: Ipv4Addr) -> Vec<u8>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]

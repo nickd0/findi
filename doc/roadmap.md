@@ -10,6 +10,7 @@ Roadmap
 - [x] Refactor to use Ipv4Addr everywhere
 - [x] Get network from available interface if no input
 - [ ] NetBIOS host name resolution
+  - branch `netbios_lookup`
 - [ ] Create a custom Event enum that encapsulates termion Events/Keys and custom events like ModalYes etc
 - [ ] Tests setup
 - [x] Program stop control
@@ -21,6 +22,7 @@ Roadmap
 
 ## v0.2.0
 - [ ] Query-wide TCP port scan results
+- [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [ ] Individual result overview popup modal
 - [ ] Additional TCP port scans of individual entry
 - [ ] Clipboard copy functionality
