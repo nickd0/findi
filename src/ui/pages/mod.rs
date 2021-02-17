@@ -29,7 +29,6 @@ pub enum PageContent {
     QueryInput,
     HostTable,
     SearchFilters,
-    ConfirmModal
 }
 
 impl Default for PageContent {

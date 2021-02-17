@@ -17,7 +17,6 @@ use tui::{
 #[derive(Clone)]
 pub enum ModalType {
     YesNo,
-    Info,
 }
 
 #[derive(Clone)]
@@ -37,10 +36,6 @@ impl Modal {
             modal_type
         }
     }
-}
-
-pub enum UiModalType {
-    Confirm
 }
 
 #[derive(Clone)]

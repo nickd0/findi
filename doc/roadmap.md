@@ -26,6 +26,8 @@ Roadmap
 - [ ] Clipboard copy functionality
 - [ ] Routing, Page system
 - [ ] Keyboard shortcuts and help menu
+- [ ] Query by interface rather than only CIDR
+- [ ] Stdout only option with no UI
 
 ## v0.3.0
 - [ ] User settings for scan type, wait times, thread pool size, UI skins!
