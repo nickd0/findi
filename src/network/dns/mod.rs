@@ -237,7 +237,7 @@ impl DnsAnswer {
     pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer, String> {
         let mut ret: DnsAnswer = serializer()
             .deserialize(&bytes[offset..(offset + 12)])
-            .map_err(|e| e.to_string()).unwrap();
+            .map_err(|e| e.to_string())?;
 
         let str_slice: String = bytes[(offset + 13)..(13 + offset + (ret.datalen - 2) as usize)]
             .iter()
@@ -283,6 +283,45 @@ pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    static PACKET_ANS_BYTES: [u8;78] = [
+        0xfe, 0xed,
+
+        0x84, 0x0,
+
+        0x0, 0x1,
+        0x0, 0x1,
+        0x0, 0x0,
+        0x0, 0x0,
+
+        0x3, 0x32, 0x31, 0x38, 0x3, 0x31,
+        0x32, 0x38, 0x3, 0x31, 0x36, 0x38,
+        0x3, 0x31, 0x39, 0x32, 0x7, 0x69,
+        0x6e, 0x2d, 0x61, 0x64, 0x64, 0x72,
+        0x4, 0x61, 0x72, 0x70, 0x61, 0x0,
+
+        0x0, 0xc,
+        0x0, 0x1, 
+
+
+        0xc0, 0xc,
+
+        0x0, 0xc,
+
+        0x0, 0x1,
+
+        0x0, 0x0, 0x0, 0xa,
+
+        0x0, 0x14,
+
+        0xc,
+
+        0x66, 0x66, 0x2d, 0x63, 0x6f, 0x6d,
+        0x2d, 0x33, 0x35, 0x38, 0x36, 0x31,
+        0x5, 0x6c, 0x6f, 0x63, 0x61, 0x6c,
+
+        0x0,
+    ];
 
     static PACKET_BYTES: [u8;40] = [
         // Header //
@@ -372,5 +411,12 @@ mod tests {
 
         assert_eq!(resp_packet.answers.len(), 1);
         assert_eq!(resp_packet.answers[0].hostname, "a-host.local");
+    }
+
+    #[test]
+    fn test_dns_answer_parse() {
+        let ans = DnsAnswer::from_bytes(&PACKET_ANS_BYTES, 46);
+
+        assert_eq!(ans.unwrap().hostname, "ff-com-35861.local")
     }
 }

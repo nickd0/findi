@@ -25,15 +25,6 @@ use crate::ui::{
 
 use termion::event::{Key};
 
-use std::iter::Filter;
-use std::slice::Iter;
-
-
-enum MainPageContent {
-    QueryInput,
-    HostTable,
-}
-
 const JUMP_LEN: usize = 20;
 
 pub struct StatefulTable<'a> {

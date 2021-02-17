@@ -35,15 +35,15 @@ pub enum AppAction {
     IterateFocus
 }
 
-impl AppAction {
-    // Return something callable, use middleware to pass a share store state
-    // handle to the closure that is returned
-    pub fn start_host_query() -> Box<dyn Fn(SharedAppStateStore)> {
-        Box::new(|lstore: SharedAppStateStore| {
-            init_host_search(lstore.clone());
-            lstore.lock().unwrap().dispatch(AppAction::SetHostSearchRun(true))
-        })
-    }
-}
+// impl AppAction {
+//     // Return something callable, use middleware to pass a share store state
+//     // handle to the closure that is returned
+//     pub fn start_host_query() -> Box<dyn Fn(SharedAppStateStore)> {
+//         Box::new(|lstore: SharedAppStateStore| {
+//             init_host_search(lstore.clone());
+//             lstore.lock().unwrap().dispatch(AppAction::SetHostSearchRun(true))
+//         })
+//     }
+// }
 
 impl Action for AppAction {}

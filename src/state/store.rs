@@ -46,10 +46,10 @@ impl AppStateStore {
   }
 }
 
-pub fn store_dispatch(store: SharedAppStateStore, action: AppAction) {
-  let mut lstore = store.lock().unwrap();
-  lstore.dispatch(action)
-}
+// pub fn store_dispatch(store: SharedAppStateStore, action: AppAction) {
+//   let mut lstore = store.lock().unwrap();
+//   lstore.dispatch(action)
+// }
 
 #[cfg(test)]
 mod tests {
