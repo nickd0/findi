@@ -18,12 +18,16 @@ mDNS multicast group is on 224.0.0.251
 */
 
 pub mod netbios;
+pub mod encoders;
+
+use encoders::DnsAddressEncoder;
 
 use bincode;
 use bincode::config::{DefaultOptions, Options};
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 use std::io::{Error, ErrorKind};
+
 use std::net::{Ipv4Addr, UdpSocket};
 use std::time::Duration;
 
@@ -50,6 +54,9 @@ impl Default for DnsPacketHeader {
     }
 }
 
+
+// A PTR record is used for reverse DNS lookup
+// https://www.cloudflare.com/learning/dns/dns-records/dns-ptr-record/
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
 #[repr(u16)]
 pub enum DnsQuestionType {
@@ -75,10 +82,6 @@ pub struct DnsQuestion {
 
     qtype: DnsQuestionType,
     qclass: DnsQuestionClass,
-}
-
-trait DnsAddressEncode {
-    fn encode(ip: Ipv4Addr) -> Vec<u8>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -187,7 +190,10 @@ impl DnsPacket {
         // Keep track of the question packet sizes
         // so we already know the answer offsets
         for q in &self.questions {
-            let qbytes = &q.arpa_addr.addr_enc;
+            let qbytes = match q.qtype {
+                DnsQuestionType::PTR => encoders::DnsPtrEncoder::encode(&q.addr),
+                DnsQuestionType::NBSTAT => encoders::DnsNbstatEncoder::encode(&q.addr)
+            };
             let qlen = qbytes.len();
             bytes.extend(qbytes);
             bytes.push(0x00);
@@ -208,10 +214,10 @@ fn serializer() -> impl Options {
 
 impl DnsQuestion {
     pub fn lookup_ptr(addr: Ipv4Addr) -> DnsQuestion {
-        Self::lookup(addr, DnsQuestionType::PTR)
+        Self::new(addr, DnsQuestionType::PTR)
     }
 
-    pub fn lookup(addr: Ipv4Addr, qtype: DnsQuestionType) -> DnsQuestion {
+    pub fn new(addr: Ipv4Addr, qtype: DnsQuestionType) -> DnsQuestion {
         Self {
             addr,
             arpa_addr: DnsArpaAddr::from(addr),
