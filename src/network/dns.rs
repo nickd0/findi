@@ -228,7 +228,7 @@ impl DnsAnswer {
     pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer, String> {
         let mut ret: DnsAnswer = serializer()
             .deserialize(&bytes[offset..(offset + 12)])
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string()).unwrap();
 
         let str_slice: String = bytes[(offset + 13)..(13 + offset + (ret.datalen - 2) as usize)]
             .iter()
@@ -268,5 +268,100 @@ pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
             }
         }
         Err(_) => Err(Error::new(ErrorKind::NotFound, "No hostname returned")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static PACKET_BYTES: [u8;40] = [
+        // Header //
+        // Transaction ID
+        0xF0, 0xF0,
+        // Flags
+        0x00,
+        0x00,
+        // Number of questions, answers, authoritative records, additional records
+        0x00, 0x01,
+        0x00, 0x00,
+        0x00, 0x00,
+        0x00, 0x00,
+
+        // Question //
+
+        // Address query
+        0x02, 0x31, 0x30, 0x01,
+        0x39, 0x01, 0x30, 0x02,
+        0x31, 0x30, 0x07, 0x69,
+        0x6e, 0x2d, 0x61, 0x64,
+        0x64, 0x72, 0x04, 0x61,
+        0x72, 0x70, 0x61, 0x00,
+
+        // Query type "PTR"
+        0x00, 0x0C,
+
+        // Query class "IN"
+        0x00, 0x01
+
+    ];
+
+    #[test]
+    fn test_multicast_dns_packet_build() {
+        let tid = 0xF0F0;
+        let mut packet = DnsPacket::new(tid);
+
+        assert_eq!(packet.header.trans_id, tid);
+
+        let ip = Ipv4Addr::new(10, 0, 9, 10);
+        let q = DnsQuestion::lookup_ptr(ip);
+
+        assert_eq!(q.arpa_addr.addr_enc.iter().map(|c| *c as char).collect::<String>(), "\u{2}10\u{1}9\u{1}0\u{2}10\u{7}in-addr\u{4}arpa");
+
+        packet.add_q(q);
+
+        assert_eq!(packet.header.n_qs, 1);
+
+        assert_eq!(packet.to_bytes().unwrap(), PACKET_BYTES.to_vec());
+    }
+
+    #[test]
+    fn test_dns_packet_buffer_parse() {
+        let mut packet_buffer: Vec<u8> = PACKET_BYTES.to_vec().clone();
+        packet_buffer[7] = 0x01;
+
+        let tid = 0xF0F0;
+        let mut packet = DnsPacket::new(tid);
+
+        let ip = Ipv4Addr::new(10, 0, 9, 10);
+        let q = DnsQuestion::lookup_ptr(ip);
+        packet.add_q(q);
+        let _ = packet.to_bytes();
+
+        // A response with hostname a-host.local
+
+        packet_buffer.extend(vec![
+            // Name pointer
+            0xC0, 0x00,
+            // Question type PTR
+            0x00, 0x0C,
+            // Question class IN
+            0x00, 0x01,
+            // TTL 600
+            0x00, 0x00, 0x02, 0x58,
+            // Size of address
+            0x00, 0x0e,
+
+            0x06,
+            0x61, 0x2d, 0x68, 0x6f, 0x73, 0x74, // "a-host"
+            0x05,
+            0x6c, 0x6f, 0x63, 0x61, 0x6c, // "local"
+            0x00
+        ]);
+
+        let resp_packet = DnsPacket::from_resp_bytes(&packet, &packet_buffer).unwrap();
+
+        assert_eq!(resp_packet.answers.len(), 1);
+        assert_eq!(resp_packet.answers[0].hostname, "a-host.local");
     }
 }

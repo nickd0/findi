@@ -280,9 +280,15 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                 Key::Ctrl(' ') | Key::Char('K') | Key::PageUp => s_table.pgup(),
 
                 // Focus shift
-                Key::Char('\t') | Key::BackTab => {
+                Key::Char('\t') => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
+                    }
+                    None
+                },
+                Key::BackTab => {
+                    if store.state.modal.is_none() {
+                        store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters))
                     }
                     None
                 },
@@ -296,9 +302,15 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
         PageContent::SearchFilters => {
             match key {
                 // TODO: Don't love is_none check, but do live that events bubble through the UI
-                Key::Char('\t') | Key::BackTab => {
+                Key::Char('\t') => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
+                    }
+                },
+
+                Key::BackTab => {
+                    if store.state.modal.is_none() {
+                        store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
                     }
                 },
 
@@ -308,7 +320,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                         SearchFilterOption::ShowAll => {
                             // Reset table select index on filter
                             store.dispatches(vec![
-                                AppAction::TableSelect(0),
+                                AppAction::TableSelect(1),
                                 AppAction::SetSearchFilter(SearchFilterOption::ShowFound)
                             ]);
                         },
@@ -321,9 +333,15 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
         PageContent::QueryInput => {
             match key {
                 // TODO: Don't love is_none check, but do live that events bubble through the UI
-                Key::Char('\t') | Key::BackTab => {
+                Key::Char('\t') => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters))
+                    }
+                },
+
+                Key::BackTab => {
+                    if store.state.modal.is_none() {
+                        store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
                     }
                 },
 

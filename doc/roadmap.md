@@ -14,8 +14,8 @@ Roadmap
 - [ ] Tests setup
 - [x] Program stop control
 - [x] New search from within UI (`cidr_input_edit`)
-- [ ] Non-private range/CIDR validation, validate size of range
-- [ ] Filter and sort results by all hosts or only live hosts
+- [x] Non-private range/CIDR validation, validate size of range
+- [x] Filter and sort results by all hosts or only live hosts
 - [ ] Filter results by hostname
 - [ ] Cleanup
 
@@ -25,6 +25,7 @@ Roadmap
 - [ ] Additional TCP port scans of individual entry
 - [ ] Clipboard copy functionality
 - [ ] Routing, Page system
+- [ ] Keyboard shortcuts and help menu
 
 ## v0.3.0
 - [ ] User settings for scan type, wait times, thread pool size, UI skins!

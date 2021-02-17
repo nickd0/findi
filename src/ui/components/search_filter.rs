@@ -33,7 +33,7 @@ pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut
     let filter_style = Style::default().fg(Color::Green);
 
     let span = Span::from(Span::styled(
-        filter_str, 
+        format!("{} ▼", filter_str), 
         filter_style
     ));
 
@@ -46,15 +46,6 @@ pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut
             }
         )
         .title("Filter/sort");
-
-    let layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
-            Constraint::Percentage(33),
-        ].as_ref())
-        .split(rect);
 
     let filter_option = Paragraph::new(span)
         .alignment(Alignment::Center)
