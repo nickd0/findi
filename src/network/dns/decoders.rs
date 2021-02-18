@@ -47,6 +47,7 @@ mod test {
     #[test]
     fn test_nbns_answer_decode() {
 
+        // Query answer:
         // CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA  ! .     A.MACBOOKPRO-C259 d .\...Y
         let answer_bytes: [u8;105] = [
             0x20, 0x43, 0x4b, 0x41, 0x41, 0x41, 0x41, 0x41,

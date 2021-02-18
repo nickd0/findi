@@ -19,6 +19,7 @@ Roadmap
 - [x] Filter and sort results by all hosts or only live hosts
 - [ ] Filter results by hostname
 - [ ] Cleanup
+- [ ] Github actions CI setup
 
 ## v0.2.0
 - [ ] Query-wide TCP port scan results

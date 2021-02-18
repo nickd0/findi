@@ -68,6 +68,9 @@ mod test {
 
         let nb_query: [u8;16] = [('*' as u8), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-        assert_eq!(second_level_encode(std::str::from_utf8(&nb_query).unwrap()), "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        assert_eq!(
+            second_level_encode(std::str::from_utf8(&nb_query).unwrap()),
+            "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        );
     }
 }
