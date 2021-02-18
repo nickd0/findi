@@ -15,3 +15,14 @@ Or to run with a specific IPv4 CIDR range:
 ```bash
 cargo run --features "ui" -- 192.168.0.0/24
 ```
+# Usage
+To run with your active IPv4 interface, simply run the command with no arguments:
+```bash
+findi
+```
+
+To run with a specific, private subnet range in CIDR notation, run:
+```bash
+findi 192.168.0.0/24
+```
+Note that the current limitation on network size is 4096 IP addresses, ie `/20` in CIDR notation.
