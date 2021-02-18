@@ -34,9 +34,14 @@ pub struct DnsNbstatEncoder {}
 impl DnsAddressEncoder for DnsNbstatEncoder {
     fn encode(_: &Ipv4Addr) -> Vec<u8> {
         let nb_query: [u8;16] = [('*' as u8), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        second_level_encode(&std::str::from_utf8(&nb_query).unwrap()).into_bytes()
+        let mut bytes: Vec<u8> = vec![32];
+        bytes.extend(
+            second_level_encode(&std::str::from_utf8(&nb_query).unwrap()).into_bytes()
+        );
+        bytes
     }
 }
+
 
 // Second level encoding for NetBIOS searches
 fn second_level_encode(addr: &str) -> String {

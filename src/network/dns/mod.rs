@@ -19,6 +19,7 @@ mDNS multicast group is on 224.0.0.251
 
 pub mod netbios;
 pub mod encoders;
+pub mod decoders;
 
 use encoders::DnsAddressEncoder;
 
@@ -239,6 +240,7 @@ struct DnsAnswer {
     hostname: String,
 }
 
+// TODO: move this to dns/encoders
 impl DnsAnswer {
     pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer, String> {
         let mut ret: DnsAnswer = serializer()
@@ -260,6 +262,7 @@ impl DnsAnswer {
     }
 }
 
+// TODO: encapsulate Udp socket stuff for both multicast and netbios
 pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
     let mut packet = DnsPacket::new(0xFEED);
     let dns_q = DnsQuestion::lookup_ptr(ip);
