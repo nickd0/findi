@@ -1,7 +1,10 @@
 use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
 use super::udp_ping::udp_ping;
 use super::ping_result::{PingResultOption};
-use super::dns::multicast_dns_lookup;
+use super::dns::{
+  multicast_dns_lookup,
+  netbios::netbios_dns_lookup
+};
 
 use std::net::{Ipv4Addr};
 use std::fmt;
@@ -41,9 +44,16 @@ impl Host {
     let mut host = Host::new(ip);
     // eprintln!("Pinging {:?}", ip);
     host.ping();
-    // TODO: do multicast lookup in a different thread?
+    
+    // TODO CONFIG: do multicast lookup in a different thread?
     // Standardize error
-    host.host_name = Some(multicast_dns_lookup(ip).map_err(|e| e.to_string()));
+    let mdns_res = multicast_dns_lookup(ip).map_err(|e| e.to_string());
+    if mdns_res.is_err() {
+      host.host_name = Some(netbios_dns_lookup(ip).map_err(|e| e.to_string()));
+    } else {
+      host.host_name = Some(mdns_res)
+    }
+
     host.ping_done = true;
     host
   }

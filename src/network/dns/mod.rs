@@ -240,7 +240,7 @@ struct DnsAnswer {
     hostname: String,
 }
 
-// TODO: move this to dns/encoders
+// TODO/ CLEANUP move this to dns/encoders
 impl DnsAnswer {
     pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer, String> {
         let mut ret: DnsAnswer = serializer()

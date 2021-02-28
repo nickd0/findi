@@ -11,19 +11,23 @@ use std::{
     net::{Ipv4Addr, UdpSocket}
 };
 
-pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String, io::Error> {
+// TODO should this return multiple answers or just the first?
+// CUSTOM_ERR implement here
+pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String, String> {
     // Pending
     let tid = 0xB105u16;
     let mut packet = DnsPacket::new(tid);
     let nb_q = DnsQuestion::new(ip, DnsQuestionType::NBSTAT);
+    let mut buf = [0; 100];
     packet.add_q(nb_q);
 
-    let usock = UdpSocket::bind("0.0.0.0:0")?;
-    usock.connect((ip, 137))?;
-    usock.send(&packet.to_bytes().unwrap())?;
-    usock.set_read_timeout(Some(Duration::from_millis(400)))?;
-    let mut buf = [0; 100];
-    usock.recv(&mut buf)?;
+    // let usock = UdpSocket::bind("0.0.0.0:0")?;
+    // usock.connect((ip, 137))?;
+    // usock.send(&packet.to_bytes().unwrap())?;
+    // usock.set_read_timeout(Some(Duration::from_millis(400)))?;
+    // usock.recv(&mut buf)?;
+
+    netbios_udp_send(ip, &mut packet, &mut buf).map_err(|_| "Could not send NBNS UDP Packet")?;
 
     // TODO:
     // - deserialize DNS header from bytes 0..12
@@ -31,11 +35,23 @@ pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String, io::Error> {
 
     // Do we care about the header?
     // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
-    let answer = NbnsAnswer::decode(&buf[13..]);
+    eprintln!("NBNS ANSWER buf {:?}", buf);
+    let answer = NbnsAnswer::decode(&buf[12..])
+        .map_err(|_| "Could not decode packet")?;
+    
+    eprintln!("NBNS ANSWER {:?}", answer.name);
 
-    println!("Buf: {:?}", buf);
+    String::from_utf8(answer.name.to_vec())
+        .map_err(|_| "Could not decode bytes".to_owned())
+}
 
-    Ok("Pending".to_owned())
+fn netbios_udp_send(ip: Ipv4Addr, packet: &mut DnsPacket, buf: &mut [u8]) -> Result<(), io::Error> {
+    let usock = UdpSocket::bind("0.0.0.0:0")?;
+    usock.connect((ip, 137))?;
+    usock.send(&packet.to_bytes().unwrap())?;
+    usock.set_read_timeout(Some(Duration::from_millis(400)))?;
+    usock.recv(buf)?;
+    Ok(())
 }
 
 #[cfg(test)]

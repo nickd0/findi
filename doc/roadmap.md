@@ -9,7 +9,7 @@ Roadmap
 - [x] Thread pool
 - [x] Refactor to use Ipv4Addr everywhere
 - [x] Get network from available interface if no input
-- [ ] NetBIOS host name resolution
+- [x] NetBIOS host name resolution
   - branch `netbios_lookup`
 - [ ] Create a custom Event enum that encapsulates termion Events/Keys and custom events like ModalYes etc
 - [ ] Tests setup
@@ -18,8 +18,12 @@ Roadmap
 - [x] Non-private range/CIDR validation, validate size of range
 - [x] Filter and sort results by all hosts or only live hosts
 - [ ] Filter results by hostname
-- [ ] Cleanup
+- [ ] Cleanup, see `CLEANUP`
 - [ ] Github actions CI setup
+- [ ] Custom Result type that uses custom Error with trait `From` to handle errors from various function calls
+  - See `CUSTOM_ERR` comments
+  - https://github.com/dtolnay/anyhow
+  - [relevant r/rust comment](https://www.reddit.com/r/rust/comments/8mbtdt/how_do_i_more_neatly_handle_multiple_different/dznl8o7?utm_source=share&utm_medium=web2x&context=3)
 
 ## v0.2.0
 - [ ] Query-wide TCP port scan results
@@ -33,7 +37,7 @@ Roadmap
 - [ ] Stdout only option with no UI
 
 ## v0.3.0
-- [ ] User settings for scan type, wait times, thread pool size, UI skins!
+- [ ] User settings for scan type, wait times, thread pool size, UI skins! (`CONFIG`)
 - [ ] Menu bar
 - [ ] Service search: Multicast DNS to discover available services on the network (airplay, spotify connect, etc)
 - [ ] Carmen/traceroute integration for non-private queries

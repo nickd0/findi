@@ -8,6 +8,7 @@ pub const TCP_PING_PORT: u16 = 80;
 
 // TODO: custom result type
 // TODO: write a post about time::Instant
+// Get a result from port 80 and dipslay the HTML title if there is one
 
 pub fn tcp_ping(ip: Ipv4Addr) -> PingResult {
   let now = Instant::now();

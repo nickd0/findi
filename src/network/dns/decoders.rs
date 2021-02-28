@@ -19,14 +19,12 @@ pub struct NbnsAnswer {
     ttl: u32,
     data_len: u16,
     num_names: u8,
-    name: [u8;15],
-    data: [u8;32],
-    data1: [u8;13],
+    pub name: [u8;15],
 }
 
 impl DnsAnswerDecoder for NbnsAnswer {
     fn decode(bytes: &[u8]) -> Result<NbnsAnswer, String> {
-        let ans: NbnsAnswer = serializer().deserialize(bytes)
+        let ans: NbnsAnswer = serializer().deserialize(&bytes[..60])
             .map_err(|e| e.to_string())?;
 
         Ok(ans)
@@ -71,5 +69,4 @@ mod test {
         assert_eq!(nbns_ans.name_len, 32);
         assert_eq!(std::str::from_utf8(&nbns_ans.name), Ok("MACBOOKPRO-C259"));
     }
-
 }
