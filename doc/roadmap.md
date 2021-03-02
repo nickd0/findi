@@ -13,14 +13,15 @@ Roadmap
   - branch `netbios_lookup`
 - [ ] Create a custom Event enum that encapsulates termion Events/Keys and custom events like ModalYes etc
 - [ ] Tests setup
+  - [ ] Unit
+  - [ ] Integration with [insta-rs](https://docs.rs/insta/1.7.0/insta/)
 - [x] Program stop control
 - [x] New search from within UI (`cidr_input_edit`)
 - [x] Non-private range/CIDR validation, validate size of range
 - [x] Filter and sort results by all hosts or only live hosts
-- [ ] Filter results by hostname
 - [ ] Cleanup, see `CLEANUP`
-- [ ] Github actions CI setup
-- [ ] Custom Result type that uses custom Error with trait `From` to handle errors from various function calls
+- [x] Github actions CI setup
+- [x] Custom Result type that uses custom Error with trait `From` to handle errors from various function calls
   - See `CUSTOM_ERR` comments
   - https://github.com/dtolnay/anyhow
   - [relevant r/rust comment](https://www.reddit.com/r/rust/comments/8mbtdt/how_do_i_more_neatly_handle_multiple_different/dznl8o7?utm_source=share&utm_medium=web2x&context=3)
@@ -29,6 +30,7 @@ Roadmap
 - [ ] Query-wide TCP port scan results
 - [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [ ] Individual result overview popup modal
+- [ ] Filter results by hostname
 - [ ] Additional TCP port scans of individual entry
 - [ ] Clipboard copy functionality
 - [ ] Routing, Page system

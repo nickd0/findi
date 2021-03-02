@@ -13,8 +13,6 @@ use pages::{Page, draw_page, handle_page_events};
 use crate::state::store::SharedAppStateStore;
 use crate::GLOBAL_RUN;
 
-use std::io;
-use std::sync::atomic::Ordering;
 use termion;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -23,10 +21,13 @@ use tui::{
     backend::TermionBackend,
     Terminal,
 };
+use anyhow::Result;
 
+use std::io;
+use std::sync::atomic::Ordering;
 use std::ops::DerefMut;
 
-pub fn ui_loop(store: SharedAppStateStore) -> Result<(), io::Error> {
+pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;

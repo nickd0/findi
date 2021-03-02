@@ -13,6 +13,7 @@ mod network;
 mod ui;
 mod state;
 mod config;
+mod error;
 
 use ui::ui_loop;
 use network::input_parse;

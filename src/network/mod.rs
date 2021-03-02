@@ -18,25 +18,26 @@ use std::sync::{
 
 use threadpool::ThreadPool;
 use pnet::ipnetwork::IpNetwork;
+use anyhow::{Result, anyhow};
 
 use std::net::Ipv4Addr;
 
 const MAX_IPNETWORK_SIZE: u32 = 4096;
 
-pub fn input_parse(input: &str) -> Result<Vec<Ipv4Addr>, String> {
+pub fn input_parse(input: &str) -> Result<Vec<Ipv4Addr>> {
     if let Ok(IpNetwork::V4(ipn)) = input.parse::<IpNetwork>() {
         // This is sort of an arbitrary limit, could be higher?
         if ipn.size() > MAX_IPNETWORK_SIZE {
-            return Err(format!("Network is larger than max size of 4096 IP addresses ({})", ipn.size()).to_owned())
+            return Err(anyhow!("Network is larger than max size of 4096 IP addresses ({})", ipn.size()))
         }
 
         // Validate only private networks for now
         if !ipn.network().is_private() {
-            return Err("Only private IP networks as defined in IETF RFC1918 can be scanned for now".to_owned())
+            return Err(anyhow!("Only private IP networks as defined in IETF RFC1918 can be scanned for now"))
         }
         Ok(ipn.iter().collect())
     } else {
-        Err("Please provide a valid IPv4 CIDR network".to_owned())
+        Err(anyhow!("Please provide a valid IPv4 CIDR network"))
     }
 }
 

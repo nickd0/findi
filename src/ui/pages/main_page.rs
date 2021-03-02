@@ -379,11 +379,11 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                             }
                         },
                         
-                        Err(msg) => {
+                        Err(err) => {
                             store.dispatch(AppAction::SetNotification(
                                 Some(Notification::new(
                                     "Error",
-                                    &msg,
+                                    &format!("{}", err),
                                     NotificationLevel::Warn
                                 ))
                             ))
@@ -402,9 +402,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                 },
                 _ => {}
             }
-        },
-
-        _ => {}
+        }
     }
 }
 

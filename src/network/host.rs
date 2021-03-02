@@ -6,6 +6,8 @@ use super::dns::{
   netbios::netbios_dns_lookup
 };
 
+use anyhow::Result;
+
 use std::net::{Ipv4Addr};
 use std::fmt;
 

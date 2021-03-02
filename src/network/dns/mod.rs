@@ -27,7 +27,7 @@ use bincode;
 use bincode::config::{DefaultOptions, Options};
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
-use std::io::{Error, ErrorKind};
+use anyhow::{Result, Error};
 
 use std::net::{Ipv4Addr, UdpSocket};
 use std::time::Duration;
@@ -159,10 +159,10 @@ impl DnsPacket {
         }
     }
 
-    pub fn from_resp_bytes(quest: &DnsPacket, bytes: &[u8]) -> Result<DnsPacket, String> {
+    pub fn from_resp_bytes(quest: &DnsPacket, bytes: &[u8]) -> Result<DnsPacket> {
         let header: DnsPacketHeader = serializer()
-            .deserialize(&bytes[..12])
-            .map_err(|e| e.to_string())?;
+            .deserialize(&bytes[..12])?;
+
         let nans = header.n_answ as usize;
         let mut pack = DnsPacket::from(header);
 
@@ -182,7 +182,7 @@ impl DnsPacket {
         self.questions.push(quest);
     }
 
-    pub fn to_bytes(&mut self) -> Result<Vec<u8>, bincode::Error> {
+    pub fn to_bytes(&mut self) -> Result<Vec<u8>> {
         let mut bytes: Vec<u8> = vec![];
         // Serialize header
         serializer().serialize_into(&mut bytes, &self.header)?;
@@ -242,10 +242,9 @@ struct DnsAnswer {
 
 // TODO/ CLEANUP move this to dns/encoders
 impl DnsAnswer {
-    pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer, String> {
+    pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer> {
         let mut ret: DnsAnswer = serializer()
-            .deserialize(&bytes[offset..(offset + 12)])
-            .map_err(|e| e.to_string())?;
+            .deserialize(&bytes[offset..(offset + 12)])?;
 
         let str_slice: String = bytes[(offset + 13)..(13 + offset + (ret.datalen - 2) as usize)]
             .iter()
@@ -263,7 +262,7 @@ impl DnsAnswer {
 }
 
 // TODO: encapsulate Udp socket stuff for both multicast and netbios
-pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
+pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String> {
     let mut packet = DnsPacket::new(0xFEED);
     let dns_q = DnsQuestion::lookup_ptr(ip);
     packet.add_q(dns_q);
@@ -275,17 +274,12 @@ pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String, std::io::Error> {
     let mut buf = [0; 100];
     usock.recv(&mut buf)?;
 
-    // TODO: is there a more efficient way than clone here?
-    match DnsPacket::from_resp_bytes(&packet, &buf) {
-        Ok(p) => {
-            // Ok(p.answers[0].hostname.clone()),
-            if let Some(ans) = p.answers.get(0) {
-                Ok(ans.hostname.to_owned())
-            } else {
-                Err(Error::new(ErrorKind::NotFound, "Recieved response with no answers"))
-            }
-        }
-        Err(_) => Err(Error::new(ErrorKind::NotFound, "No hostname returned")),
+
+    let packet = DnsPacket::from_resp_bytes(&packet, &buf)?;
+    if let Some(ans) = packet.answers.get(0) {
+        Ok(ans.hostname.to_owned())
+    } else {
+        Err(Error::msg("Recieved response with no answers"))
     }
 }
 

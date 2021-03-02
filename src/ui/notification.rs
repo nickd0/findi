@@ -13,7 +13,6 @@ use tui::{
 pub enum NotificationLevel {
     Info,
     Warn,
-    Err
 }
 
 #[derive(Clone)]
@@ -82,7 +81,6 @@ pub fn draw_notification<B: Backend>(notif: Notification, f: &mut Frame<B>) {
                             match notif.level {
                                 NotificationLevel::Info => Color::LightBlue,
                                 NotificationLevel::Warn => Color::LightRed,
-                                NotificationLevel::Err => Color::Red
                             }
                         )
                 )

@@ -1,12 +1,12 @@
 use super::{DnsQuestionClass, DnsQuestionType, serializer};
 
 use bincode;
-use bincode::config::{DefaultOptions, Options};
+use bincode::config::Options;
 use serde::{Deserialize, Serialize};
-use serde_repr::*;
+use anyhow::Result;
 
 pub trait DnsAnswerDecoder {
-    fn decode(bytes: &[u8]) -> Result<Self, String> where Self: std::marker::Sized;
+    fn decode(bytes: &[u8]) -> Result<Self> where Self: std::marker::Sized;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -23,10 +23,8 @@ pub struct NbnsAnswer {
 }
 
 impl DnsAnswerDecoder for NbnsAnswer {
-    fn decode(bytes: &[u8]) -> Result<NbnsAnswer, String> {
-        let ans: NbnsAnswer = serializer().deserialize(&bytes[..60])
-            .map_err(|e| e.to_string())?;
-
+    fn decode(bytes: &[u8]) -> Result<NbnsAnswer> {
+        let ans: NbnsAnswer = serializer().deserialize(&bytes[..60])?;
         Ok(ans)
     }
 }

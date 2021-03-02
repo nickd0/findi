@@ -28,7 +28,7 @@ impl AppStateStore {
   // Could use async and then wait for the lock in the async fn
 
   // Need to potentially recover from a poisoned mutex here?
-  // Use a mpsc queue here instead of blocking?
+  // TODO Use a mpsc queue and another thread here instead of blocking?
   pub fn dispatch(&mut self, action: AppAction) {
     let mut dplocked = self.dispatch_lock.lock().unwrap();
     *dplocked = true;

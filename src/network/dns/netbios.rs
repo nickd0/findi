@@ -1,19 +1,18 @@
 use super::{
     DnsPacket, DnsQuestion,
-    DnsAnswer, DnsQuestionType,
-    DnsPacketHeader, serializer,
+    DnsQuestionType,
     decoders::{DnsAnswerDecoder, NbnsAnswer}
 };
 
+use anyhow::Result;
+
 use std::{
-    io,
     time::Duration,
     net::{Ipv4Addr, UdpSocket}
 };
 
 // TODO should this return multiple answers or just the first?
-// CUSTOM_ERR implement here
-pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String, String> {
+pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String> {
     // Pending
     let tid = 0xB105u16;
     let mut packet = DnsPacket::new(tid);
@@ -21,13 +20,11 @@ pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String, String> {
     let mut buf = [0; 100];
     packet.add_q(nb_q);
 
-    // let usock = UdpSocket::bind("0.0.0.0:0")?;
-    // usock.connect((ip, 137))?;
-    // usock.send(&packet.to_bytes().unwrap())?;
-    // usock.set_read_timeout(Some(Duration::from_millis(400)))?;
-    // usock.recv(&mut buf)?;
-
-    netbios_udp_send(ip, &mut packet, &mut buf).map_err(|_| "Could not send NBNS UDP Packet")?;
+    let usock = UdpSocket::bind("0.0.0.0:0")?;
+    usock.connect((ip, 137))?;
+    usock.send(&packet.to_bytes().unwrap())?;
+    usock.set_read_timeout(Some(Duration::from_millis(400)))?;
+    usock.recv(&mut buf)?;
 
     // TODO:
     // - deserialize DNS header from bytes 0..12
@@ -35,23 +32,10 @@ pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String, String> {
 
     // Do we care about the header?
     // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
-    eprintln!("NBNS ANSWER buf {:?}", buf);
-    let answer = NbnsAnswer::decode(&buf[12..])
-        .map_err(|_| "Could not decode packet")?;
+    let answer = NbnsAnswer::decode(&buf[12..])?;
     
-    eprintln!("NBNS ANSWER {:?}", answer.name);
-
-    String::from_utf8(answer.name.to_vec())
-        .map_err(|_| "Could not decode bytes".to_owned())
-}
-
-fn netbios_udp_send(ip: Ipv4Addr, packet: &mut DnsPacket, buf: &mut [u8]) -> Result<(), io::Error> {
-    let usock = UdpSocket::bind("0.0.0.0:0")?;
-    usock.connect((ip, 137))?;
-    usock.send(&packet.to_bytes().unwrap())?;
-    usock.set_read_timeout(Some(Duration::from_millis(400)))?;
-    usock.recv(buf)?;
-    Ok(())
+    let host_str = String::from_utf8(answer.name.to_vec())?;
+    Ok(host_str.trim().to_string())
 }
 
 #[cfg(test)]
@@ -102,19 +86,5 @@ mod test {
         packet.add_q(nb_q);
 
         assert_eq!(packet.to_bytes().unwrap(), NB_PACKET_BYTES);
-    }
-
-    // TODO
-    fn test_netbios_packet_parse() {
-
-
-        let tid = 0xF00D;
-
-        let nb_q = DnsQuestion::new(Ipv4Addr::new(10, 10, 0, 10), DnsQuestionType::NBSTAT);
-        let mut packet = DnsPacket::new(tid);
-        packet.add_q(nb_q);
-        let resp_packet = DnsPacket::from_resp_bytes(&packet, &NB_PACKET_BYTES).unwrap();
-
-        assert_eq!(resp_packet.answers[0].hostname, "MACBOOKPRO-C259");
     }
 }
