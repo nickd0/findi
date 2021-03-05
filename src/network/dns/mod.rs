@@ -18,10 +18,12 @@ mDNS multicast group is on 224.0.0.251
 */
 
 pub mod netbios;
+pub mod mdns;
 pub mod encoders;
 pub mod decoders;
 
 use encoders::DnsAddressEncoder;
+use decoders::DnsAnswerDecoder;
 
 use bincode;
 use bincode::config::{DefaultOptions, Options};
@@ -29,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::*;
 use anyhow::{Result, Error};
 
-use std::net::{Ipv4Addr, UdpSocket};
+use std::net::{Ipv4Addr, UdpSocket, ToSocketAddrs};
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -163,17 +165,7 @@ impl DnsPacket {
         let header: DnsPacketHeader = serializer()
             .deserialize(&bytes[..12])?;
 
-        let nans = header.n_answ as usize;
-        let mut pack = DnsPacket::from(header);
-
-        let offset = quest.qsizes.iter().fold(0, |sum, i| sum + i) + 12;
-        for _ in 0..nans {
-            match DnsAnswer::from_bytes(&bytes, offset) {
-                Ok(a) => pack.answers.push(a),
-                Err(_) => {}
-            }
-        }
-
+        let pack = DnsPacket::from(header);
         Ok(pack)
     }
 
@@ -240,91 +232,40 @@ struct DnsAnswer {
     hostname: String,
 }
 
-// TODO/ CLEANUP move this to dns/encoders
-impl DnsAnswer {
-    pub fn from_bytes(bytes: &[u8], offset: usize) -> Result<DnsAnswer> {
-        let mut ret: DnsAnswer = serializer()
-            .deserialize(&bytes[offset..(offset + 12)])?;
+// For now, we assume only one answer per reverse lookup, so only return one in this func
+pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr, qtype: DnsQuestionType) -> Result<T> {
+    let port = match qtype {
+        DnsQuestionType::NBSTAT => 137,
+        DnsQuestionType::PTR => 5353
+    };
 
-        let str_slice: String = bytes[(offset + 13)..(13 + offset + (ret.datalen - 2) as usize)]
-            .iter()
-            .map(|c| {
-                if (*c as char).is_ascii_control() {
-                    '.'
-                } else {
-                    *c as char
-                }
-            })
-            .collect();
-        ret.hostname = str_slice;
-        Ok(ret)
-    }
+    let tid: u16 = 0xF00D;
+    let mut packet = DnsPacket::new(tid);
+    let nb_q = DnsQuestion::new(ip, qtype);
+    let mut buf = [0; 100];
+    packet.add_q(nb_q);
+
+    dns_udp_transact((ip, port), &mut packet, &mut buf)?;
+
+    // Do we care about the header?
+    // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
+    // NetBIOS lookups always have the same offset, so no need to parse header for now
+    // let answer = NbnsAnswer::decode(&buf[12..])?;
+    T::decode(&packet, &buf)
 }
 
-// TODO: encapsulate Udp socket stuff for both multicast and netbios
-pub fn multicast_dns_lookup(ip: Ipv4Addr) -> Result<String> {
-    let mut packet = DnsPacket::new(0xFEED);
-    let dns_q = DnsQuestion::lookup_ptr(ip);
-    packet.add_q(dns_q);
-
+pub fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> {
     let usock = UdpSocket::bind("0.0.0.0:0")?;
-    usock.connect((ip, 5353))?;
-    usock.send(&packet.to_bytes().unwrap())?;
+    usock.connect(dst)?;
+    usock.send(&mut packet.to_bytes().unwrap())?;
     usock.set_read_timeout(Some(Duration::from_millis(400)))?;
-    let mut buf = [0; 100];
-    usock.recv(&mut buf)?;
-
-
-    let packet = DnsPacket::from_resp_bytes(&packet, &buf)?;
-    if let Some(ans) = packet.answers.get(0) {
-        Ok(ans.hostname.to_owned())
-    } else {
-        Err(Error::msg("Recieved response with no answers"))
-    }
+    usock.recv(buf)?;
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    static PACKET_ANS_BYTES: [u8;78] = [
-        0xfe, 0xed,
-
-        0x84, 0x0,
-
-        0x0, 0x1,
-        0x0, 0x1,
-        0x0, 0x0,
-        0x0, 0x0,
-
-        0x3, 0x32, 0x31, 0x38, 0x3, 0x31,
-        0x32, 0x38, 0x3, 0x31, 0x36, 0x38,
-        0x3, 0x31, 0x39, 0x32, 0x7, 0x69,
-        0x6e, 0x2d, 0x61, 0x64, 0x64, 0x72,
-        0x4, 0x61, 0x72, 0x70, 0x61, 0x0,
-
-        0x0, 0xc,
-        0x0, 0x1, 
-
-
-        0xc0, 0xc,
-
-        0x0, 0xc,
-
-        0x0, 0x1,
-
-        0x0, 0x0, 0x0, 0xa,
-
-        0x0, 0x14,
-
-        0xc,
-
-        0x66, 0x66, 0x2d, 0x63, 0x6f, 0x6d,
-        0x2d, 0x33, 0x35, 0x38, 0x36, 0x31,
-        0x5, 0x6c, 0x6f, 0x63, 0x61, 0x6c,
-
-        0x0,
-    ];
 
     static PACKET_BYTES: [u8;40] = [
         // Header //
@@ -412,14 +353,6 @@ mod tests {
 
         let resp_packet = DnsPacket::from_resp_bytes(&packet, &packet_buffer).unwrap();
 
-        assert_eq!(resp_packet.answers.len(), 1);
-        assert_eq!(resp_packet.answers[0].hostname, "a-host.local");
-    }
-
-    #[test]
-    fn test_dns_answer_parse() {
-        let ans = DnsAnswer::from_bytes(&PACKET_ANS_BYTES, 46);
-
-        assert_eq!(ans.unwrap().hostname, "ff-com-35861.local")
+        assert_eq!(resp_packet.header.n_answ, 1);
     }
 }

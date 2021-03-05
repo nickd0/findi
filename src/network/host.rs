@@ -2,8 +2,10 @@ use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
 use super::udp_ping::udp_ping;
 use super::ping_result::{PingResultOption};
 use super::dns::{
-  multicast_dns_lookup,
-  netbios::netbios_dns_lookup
+  DnsQuestionType,
+  mdns::MdnsAnswer,
+  decoders::NbnsAnswer,
+  reverse_dns_lookup
 };
 
 use anyhow::Result;
@@ -44,16 +46,19 @@ pub struct Host {
 impl Host {
   pub fn host_ping(ip: Ipv4Addr) -> Host {
     let mut host = Host::new(ip);
-    // eprintln!("Pinging {:?}", ip);
     host.ping();
     
     // TODO CONFIG: do multicast lookup in a different thread?
     // Standardize error
-    let mdns_res = multicast_dns_lookup(ip).map_err(|e| e.to_string());
-    if mdns_res.is_err() {
-      host.host_name = Some(netbios_dns_lookup(ip).map_err(|e| e.to_string()));
-    } else {
-      host.host_name = Some(mdns_res)
+
+    match reverse_dns_lookup::<MdnsAnswer>(ip, DnsQuestionType::PTR) {
+      Ok(ans) => host.host_name = Some(Ok(ans.hostname)),
+      Err(_) => {
+        match reverse_dns_lookup::<NbnsAnswer>(ip, DnsQuestionType::NBSTAT) {
+          Ok(ans) => host.host_name = Some(Ok(ans.hostname)),
+          Err(_) => host.host_name = Some(Err("Reverse lookup failed".to_owned()))
+        }
+      }
     }
 
     host.ping_done = true;

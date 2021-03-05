@@ -409,7 +409,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
 fn get_selected_hosts<'a>(hosts: &'a HostVec, search_opt: &'a SearchFilterOption) -> impl Iterator<Item = &'a Host> {
     hosts.iter().filter(move |&h| {
         if matches!(search_opt, SearchFilterOption::ShowFound) {
-            h.ping_res.is_some()
+            h.ping_res.is_some() || h.host_name.as_ref().unwrap_or(&Err(String::new())).is_ok()
         } else {
             true
         }

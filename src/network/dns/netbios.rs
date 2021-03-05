@@ -1,38 +1,30 @@
 use super::{
     DnsPacket, DnsQuestion,
     DnsQuestionType,
-    decoders::{DnsAnswerDecoder, NbnsAnswer}
+    decoders::{DnsAnswerDecoder, NbnsAnswer},
+    dns_udp_transact
 };
 
 use anyhow::Result;
 
 use std::{
-    time::Duration,
-    net::{Ipv4Addr, UdpSocket}
+    net::Ipv4Addr
 };
 
 // TODO should this return multiple answers or just the first?
 pub fn netbios_dns_lookup(ip: Ipv4Addr) -> Result<String> {
-    // Pending
-    let tid = 0xB105u16;
+    let tid: u16 = 0xB105;
     let mut packet = DnsPacket::new(tid);
     let nb_q = DnsQuestion::new(ip, DnsQuestionType::NBSTAT);
     let mut buf = [0; 100];
     packet.add_q(nb_q);
 
-    let usock = UdpSocket::bind("0.0.0.0:0")?;
-    usock.connect((ip, 137))?;
-    usock.send(&packet.to_bytes().unwrap())?;
-    usock.set_read_timeout(Some(Duration::from_millis(400)))?;
-    usock.recv(&mut buf)?;
-
-    // TODO:
-    // - deserialize DNS header from bytes 0..12
-    // - deserialize NBNS answer from remaining
+    dns_udp_transact((ip, 137), &mut packet, &mut buf)?;
 
     // Do we care about the header?
     // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
-    let answer = NbnsAnswer::decode(&buf[12..])?;
+    // NetBIOS lookups always have the same offset, so no need to parse header for now
+    let answer = NbnsAnswer::decode(&packet, &buf[12..])?;
     
     let host_str = String::from_utf8(answer.name.to_vec())?;
     Ok(host_str.trim().to_string())
