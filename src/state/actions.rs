@@ -1,5 +1,3 @@
-use super::store::SharedAppStateStore;
-
 use crate::network::ping_result::PingResult;
 use crate::network::{
     host::Host,

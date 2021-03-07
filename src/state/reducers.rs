@@ -15,7 +15,7 @@ impl Reducer<AppAction> for AppReducer {
     match action {
       AppAction::BuildHosts(hosts) => {
         state.hosts = hosts.iter().map(|h| Host::new(*h) ).collect();
-        return state
+        state
       },
 
       AppAction::UpdateHost(host) => {

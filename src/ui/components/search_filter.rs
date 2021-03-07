@@ -32,10 +32,10 @@ pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut
 
     let filter_style = Style::default().fg(Color::Green);
 
-    let span = Span::from(Span::styled(
+    let span = Span::styled(
         format!("{} ▼", filter_str), 
         filter_style
-    ));
+    );
 
     let control_block = Block::default()
         .borders(Borders::ALL)

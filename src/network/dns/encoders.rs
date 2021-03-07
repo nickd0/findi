@@ -20,10 +20,10 @@ impl DnsAddressEncoder for DnsPtrEncoder {
         let mut addr_enc: Vec<u8> = vec![];
 
         let mut bts: &[u8];
-        for chunk in addr_str.split(".") {
+        for chunk in addr_str.split('.') {
             addr_enc.push(chunk.len() as u8);
             bts = chunk.as_bytes();
-            addr_enc.extend_from_slice(&mut bts);
+            addr_enc.extend_from_slice(&bts);
         };
         addr_enc
     }
@@ -33,7 +33,7 @@ pub struct DnsNbstatEncoder {}
 
 impl DnsAddressEncoder for DnsNbstatEncoder {
     fn encode(_: &Ipv4Addr) -> Vec<u8> {
-        let nb_query: [u8;16] = [('*' as u8), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let nb_query: [u8;16] = [b'*', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut bytes: Vec<u8> = vec![32];
         bytes.extend(
             second_level_encode(&std::str::from_utf8(&nb_query).unwrap()).into_bytes()

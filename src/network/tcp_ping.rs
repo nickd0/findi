@@ -18,7 +18,7 @@ pub fn tcp_ping(ip: Ipv4Addr) -> PingResult {
 
   stream.set_write_timeout(to)?;
   stream.set_read_timeout(to)?;
-  stream.write(&[1])?;
+  stream.write_all(&[1])?;
 
   Ok(now.elapsed())
 }

@@ -13,7 +13,6 @@ use pages::{Page, draw_page, handle_page_events};
 use crate::state::store::SharedAppStateStore;
 use crate::GLOBAL_RUN;
 
-use termion;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::event::{Key};

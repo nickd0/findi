@@ -13,7 +13,6 @@ mod network;
 mod ui;
 mod state;
 mod config;
-mod error;
 
 use ui::ui_loop;
 use network::input_parse;
@@ -61,8 +60,9 @@ fn main() {
 
         query = input;
 
-    } else if default_iface.is_some() {
-        if let IpNetwork::V4(ipn) = default_iface.unwrap().ips[0] {
+    // } else if default_iface.is_some() {
+    } else if let Some(default_if_some) = default_iface {
+        if let IpNetwork::V4(ipn) = default_if_some.ips[0] {
             // TODO: how to handle multiple ips on one interface?
             hosts = ipn.iter().collect();
             query = ipn.to_string();
@@ -75,7 +75,7 @@ fn main() {
         exit(1);
     }
 
-    store.dispatch(AppAction::BuildHosts(hosts.clone()));
+    store.dispatch(AppAction::BuildHosts(hosts));
     store.dispatch(AppAction::SetQuery(query));
     store.dispatch(AppAction::SetHostSearchRun(true));
 
@@ -84,7 +84,7 @@ fn main() {
     #[cfg(feature = "ui")]
     let ui_thread = start_ui(shared_store.clone());
 
-    init_host_search(shared_store.clone());
+    init_host_search(shared_store);
 
     #[cfg(feature = "ui")]
     let _ = ui_thread.join();

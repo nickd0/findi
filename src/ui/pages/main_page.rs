@@ -36,7 +36,7 @@ impl<'a> StatefulTable<'a> {
     pub fn new(state: &'a TableState, items: &'a Vec<&'a Host>) -> StatefulTable<'a> {
         StatefulTable {
             state,
-            items,
+            items
         }
     }
 
@@ -152,18 +152,16 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
     // Render filter options
     draw_search_filter(&*lstore, first_row[1], f);
 
-    match curr_focus {
-        PageContent::QueryInput => f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1),
-        _ => {}
-    };
+    if let PageContent::QueryInput = curr_focus {
+        f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1)
+    }
 
     // Render Gauge //
     let hosts_len = &lstore.state.hosts.len();
     let num_done = &lstore.state.hosts
         .iter()
         .filter(|&h| h.ping_done)
-        .collect::<Vec<&Host>>()
-        .len();
+        .count();
     
     let pcnt_done = (num_done * 100 / hosts_len) as u16;
 
@@ -206,14 +204,13 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         if let Some(ping_type) = host.ping_type {
             ping_cell = Cell::from(ping_type.to_string());
 
-            match ping_type {
-                PingType::TCP => port_cell = Cell::from(
-                host.tcp_ports.iter()
-                    .map(|p| p.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",")
-                ),
-                _ => {}
+            if let PingType::TCP = ping_type {
+                port_cell = Cell::from(
+                    host.tcp_ports.iter()
+                        .map(|p| p.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",")
+                )
             }
         }
 
@@ -261,7 +258,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
     // let mut store = store.lock().unwrap();
     match store.state.curr_focus {
         PageContent::HostTable => {
-            let s_hosts = get_selected_hosts(&store.state.hosts, &store.state.search_filter_opt).collect();
+            let s_hosts: Vec<&Host> = get_selected_hosts(&store.state.hosts, &store.state.search_filter_opt).collect();
             let s_table = StatefulTable::new(&store.state.table_state, &s_hosts);
             if let Some(table_idx) = match key {
                 // Char inputs
@@ -362,7 +359,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                                 // TODO: Should this be done from some sort of Thunk action?
                                 // Problem is that the store is wrapped in a mutex currently
                                 // and so does not have access to a thread-safe reference
-                                init_host_search(store_mtx.clone())
+                                init_host_search(store_mtx)
                             } else {
                                 let mut msg = String::from("Are you sure you want to start a new query?");
                                 if store.state.query_state {

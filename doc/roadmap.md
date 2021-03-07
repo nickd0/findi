@@ -13,7 +13,7 @@ Roadmap
   - branch `netbios_lookup`
 - [ ] Create a custom Event enum that encapsulates termion Events/Keys and custom events like ModalYes etc
 - [ ] Tests setup
-  - [ ] Unit
+  - [x] Unit
   - [ ] Integration with [insta-rs](https://docs.rs/insta/1.7.0/insta/)
 - [x] Program stop control
 - [x] New search from within UI (`cidr_input_edit`)

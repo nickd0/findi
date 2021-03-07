@@ -2,9 +2,7 @@ use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
 use super::udp_ping::udp_ping;
 use super::ping_result::{PingResultOption};
 use super::dns::{
-  DnsQuestionType,
-  mdns::MdnsAnswer,
-  decoders::NbnsAnswer,
+  decoders::{NbnsAnswer, MdnsAnswer},
   reverse_dns_lookup
 };
 
@@ -51,10 +49,12 @@ impl Host {
     // TODO CONFIG: do multicast lookup in a different thread?
     // Standardize error
 
-    match reverse_dns_lookup::<MdnsAnswer>(ip, DnsQuestionType::PTR) {
+    // Perform mDNS reverse lookup
+    // Then NBNS NBSTAT query if fails
+    match reverse_dns_lookup::<MdnsAnswer>(ip) {
       Ok(ans) => host.host_name = Some(Ok(ans.hostname)),
       Err(_) => {
-        match reverse_dns_lookup::<NbnsAnswer>(ip, DnsQuestionType::NBSTAT) {
+        match reverse_dns_lookup::<NbnsAnswer>(ip) {
           Ok(ans) => host.host_name = Some(Ok(ans.hostname)),
           Err(_) => host.host_name = Some(Err("Reverse lookup failed".to_owned()))
         }
@@ -67,7 +67,7 @@ impl Host {
 
   pub fn new(ip: Ipv4Addr) -> Host {
     Host {
-      ip: ip,
+      ip,
       ping_res: None,
       ping_type: None,
       host_name: None,

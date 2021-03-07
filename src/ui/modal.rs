@@ -101,8 +101,8 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
         ModalOpt::No => no_style = no_style.fg(Color::Green)
     };
 
-    let span = Span::from(Span::styled("Yes", yes_style));
-    let no_span = Span::from(Span::styled("No", no_style));
+    let span = Span::styled("Yes", yes_style);
+    let no_span = Span::styled("No", no_style);
 
     let yes_btn = Paragraph::new(span).alignment(Alignment::Center);
     let no_btn = Paragraph::new(no_span).alignment(Alignment::Center);
@@ -166,11 +166,8 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, _: SharedAppState
         },
 
         Key::Char('\n') => {
-            match store.state.modal.as_ref().unwrap().selected {
-                ModalOpt::No => {
-                    store.dispatch(AppAction::SetModal(None))
-                },
-                _ => {}
+            if let ModalOpt::No = store.state.modal.as_ref().unwrap().selected {
+                store.dispatch(AppAction::SetModal(None))
             }
         },
 
