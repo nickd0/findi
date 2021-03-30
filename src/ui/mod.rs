@@ -31,9 +31,6 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let lock_store = store.lock().unwrap();
-    drop(lock_store);
-
     // Uses termions async stdin for now,
     // Does not work on windows
     let mut stdin = termion::async_stdin().keys();
@@ -76,11 +73,12 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
         // 
         if let Some(Ok(key)) = stdin.next() {
             let mut lstore = store.lock().unwrap();
+
+            handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
+
             if lstore.state.modal.is_some() {
                 modal::handle_modal_event(key, lstore.deref_mut(), store.clone())
             }
-
-            handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
 
             match key {
                 Key::Ctrl('c') | Key::Esc => GLOBAL_RUN.store(false, Ordering::Release),

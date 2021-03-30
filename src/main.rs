@@ -44,7 +44,7 @@ fn main() {
     let default_iface = interfaces
         .iter()
         .find(|e| {
-            e.is_up() && !e.is_loopback() && !e.ips.is_empty()
+            e.is_up() && !e.is_loopback() && !e.ips.is_empty() && e.ips.iter().any(|&ip| ip.is_ipv4())
         });
 
     let mut store = AppStateStore::new();
@@ -67,7 +67,7 @@ fn main() {
             hosts = ipn.iter().collect();
             query = ipn.to_string();
         } else {
-            return println!("Currently only interfaces with an IPv4 address can be used")
+            return println!("Currently only interfaces with an IPv4 address can be used. Current interface: {:?}", default_iface)
         }
 
     } else {

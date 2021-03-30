@@ -12,7 +12,7 @@ use crate::ui::{
     notification::{Notification, NotificationLevel},
     components::search_filter::{draw_search_filter, SearchFilterOption}
 };
-use crate::ui::modal::{Modal, ModalType};
+use crate::ui::modal::{Modal, ModalType, ModalOpt};
 use crate::state::actions::AppAction;
 use crate::network::{
     input_parse,
@@ -348,18 +348,20 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     // Check if modal is visible and YES is selected, then parse and send hosts
                     match parsed {
                         Ok(hosts) => {
-                            if store.state.modal.is_some() {
+                            if let Some(modal) = &store.state.modal {
                                 // Assuming YES is selected for now
-                                store.dispatches(vec![
-                                    AppAction::SetHostSearchRun(false),
-                                    AppAction::SetModal(None),
-                                    AppAction::BuildHosts(hosts),
-                                    AppAction::ShiftFocus(PageContent::HostTable)
-                                ]);
-                                // TODO: Should this be done from some sort of Thunk action?
-                                // Problem is that the store is wrapped in a mutex currently
-                                // and so does not have access to a thread-safe reference
-                                init_host_search(store_mtx)
+                                if let ModalOpt::Yes = modal.selected {
+                                    store.dispatches(vec![
+                                        AppAction::SetHostSearchRun(false),
+                                        AppAction::SetModal(None),
+                                        AppAction::BuildHosts(hosts),
+                                        AppAction::ShiftFocus(PageContent::HostTable)
+                                    ]);
+                                    // TODO: Should this be done from some sort of Thunk action?
+                                    // Problem is that the store is wrapped in a mutex currently
+                                    // and so does not have access to a thread-safe reference
+                                    init_host_search(store_mtx)
+                                }
                             } else {
                                 let mut msg = String::from("Are you sure you want to start a new query?");
                                 if store.state.query_state {
