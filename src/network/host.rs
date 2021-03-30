@@ -13,7 +13,7 @@ use std::fmt;
 
 pub type HostVec = Vec<Host>;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PingType {
   UDP,
   TCP
@@ -28,7 +28,7 @@ impl fmt::Display for PingType {
   }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Host {
   pub ip: Ipv4Addr,
   pub ping_res: PingResultOption,
