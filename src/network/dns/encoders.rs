@@ -73,4 +73,12 @@ mod test {
             "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         );
     }
+
+    #[test]
+    fn test_ptr_encoder() {
+        let addr = "10.0.9.10";
+        let encoded_addr = "\u{2}10\u{1}9\u{1}0\u{2}10\u{7}in-addr\u{4}arpa";
+        let ipv4: Ipv4Addr = addr.parse().unwrap();
+        assert_eq!(DnsPtrEncoder::encode(&ipv4), encoded_addr.bytes().collect::<Vec<u8>>());
+    }
 }
