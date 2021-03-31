@@ -25,3 +25,16 @@ anyhow = "1.0"
 [features]
 ui = []
 default = ["ui"]
+
+[[bin]]
+test = true
+bench = false
+path = "src/main.rs"
+name = "findi-test"
+
+[[bin]]
+test = false
+bench = false
+path = "src/main.rs"
+name = "findi"
+

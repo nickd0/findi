@@ -24,7 +24,7 @@ pub fn handle_page_events(curr_page: &Page, key: Key, store: &mut AppStateStore,
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PageContent {
     QueryInput,
     HostTable,

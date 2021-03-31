@@ -146,4 +146,14 @@ mod test {
         let new_state1 = test_helper_reduce_state(action1, None);
         assert_eq!(new_state1.notification.is_none(), true)
     }
+
+    #[test]
+    fn test_action_set_query_complete() {
+        let action = AppAction::QueryComplete;
+        let new_state = test_helper_reduce_state(action, None);
+
+        assert_eq!(new_state.query_state, true);
+        assert_eq!(new_state.search_run, false);
+        assert_eq!(new_state.notification.unwrap().message, "Host search complete");
+    }
 }
