@@ -33,6 +33,8 @@ pub struct StatefulTable<'a> {
 }
 
 impl<'a> StatefulTable<'a> {
+
+    #[allow(clippy::ptr_arg)]
     pub fn new(state: &'a TableState, items: &'a Vec<&'a Host>) -> StatefulTable<'a> {
         StatefulTable {
             state,
@@ -409,6 +411,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
     }
 }
 
+#[allow(clippy::ptr_arg)]
 fn get_selected_hosts<'a>(hosts: &'a HostVec, search_opt: &'a SearchFilterOption) -> impl Iterator<Item = &'a Host> {
     hosts.iter().filter(move |&h| {
         if matches!(search_opt, SearchFilterOption::ShowFound) {

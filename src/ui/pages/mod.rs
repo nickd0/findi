@@ -36,9 +36,3 @@ impl Default for PageContent {
         PageContent::HostTable
     }
 }
-
-// pub fn handle_page_events(curr_page: &Page, key: Key) {
-//     match curr_page {
-//         Page::MainPage =>
-//     }
-// }

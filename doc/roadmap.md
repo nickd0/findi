@@ -12,9 +12,9 @@ Roadmap
 - [x] NetBIOS host name resolution
   - branch `netbios_lookup`
 - [ ] Create a custom Event enum that encapsulates termion Events/Keys and custom events like ModalYes etc
-- [ ] Tests setup
+- [x] Tests setup
   - [x] Unit
-  - [ ] Integration with [insta-rs](https://docs.rs/insta/1.7.0/insta/)
+  - ~~[ ] integration with [insta-rs](https://docs.rs/insta/1.7.0/insta/)~~
 - [x] Program stop control
 - [x] New search from within UI (`cidr_input_edit`)
 - [x] Non-private range/CIDR validation, validate size of range

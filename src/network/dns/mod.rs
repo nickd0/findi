@@ -158,7 +158,8 @@ impl DnsPacket {
         }
     }
 
-    pub fn from_resp_bytes(quest: &DnsPacket, bytes: &[u8]) -> Result<DnsPacket> {
+    #[allow(dead_code)]
+    pub fn from_resp_bytes(bytes: &[u8]) -> Result<DnsPacket> {
         let header: DnsPacketHeader = serializer()
             .deserialize(&bytes[..12])?;
 
@@ -392,7 +393,7 @@ mod tests {
             0x00
         ]);
 
-        let resp_packet = DnsPacket::from_resp_bytes(&packet, &packet_buffer).unwrap();
+        let resp_packet = DnsPacket::from_resp_bytes(&packet_buffer).unwrap();
 
         assert_eq!(resp_packet.header.n_answ, 1);
     }
