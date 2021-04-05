@@ -22,7 +22,7 @@ pub enum AppAction {
     SetInputErr(bool),
     SetHostSearchRun(bool),
     NewQuery(Vec<Ipv4Addr>),
-    TableSelect(usize),
+    TableSelect(Option<usize>),
     ShiftFocus(PageContent),
     SetNotification(Option<Notification>),
     SetModal(Option<Modal>),

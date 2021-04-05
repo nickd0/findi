@@ -285,7 +285,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
 
                 _ => None
             } {
-                store.dispatch(AppAction::TableSelect(table_idx))
+                store.dispatch(AppAction::TableSelect(Some(table_idx)))
             }
         },
 
@@ -310,7 +310,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                         SearchFilterOption::ShowAll => {
                             // Reset table select index on filter
                             store.dispatches(vec![
-                                AppAction::TableSelect(1),
+                                AppAction::TableSelect(None),
                                 AppAction::SetSearchFilter(SearchFilterOption::ShowFound)
                             ]);
                         },
@@ -548,6 +548,23 @@ mod test {
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
             state.notification.as_ref().unwrap().message.contains("Please provide a valid IPv4 CIDR")
+        });
+    }
+
+    #[test]
+    fn test_main_page_filters_table_highlight() {
+        let store = AppStateStore::new();
+
+        let events: [(Key, Option<usize>); 5] = [
+            (Key::Char(' '), Some(0)),
+            (Key::Char(' '), Some(20)),
+            (Key::Char('\t'), Some(20)),
+            (Key::Char('\t'), Some(20)),
+            (Key::Char(' '), None),
+        ];
+
+        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            state.table_state.selected()
         });
     }
 

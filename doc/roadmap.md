@@ -27,6 +27,7 @@ Roadmap
   - [relevant r/rust comment](https://www.reddit.com/r/rust/comments/8mbtdt/how_do_i_more_neatly_handle_multiple_different/dznl8o7?utm_source=share&utm_medium=web2x&context=3)
 
 ## v0.2.0
+- [ ] Use [crossterm](https://crates.io/crates/crossterm) backend
 - [ ] Query-wide TCP port scan results
 - [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [ ] Individual result overview popup modal

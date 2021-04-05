@@ -55,7 +55,7 @@ impl Reducer<AppAction> for AppReducer {
             },
 
             AppAction::TableSelect(idx) => {
-                state.table_state.select(Some(idx));
+                state.table_state.select(idx);
                 state
             },
 

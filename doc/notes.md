@@ -59,3 +59,9 @@ TODO:
 
 - Page Routing
   - A `UiPage` trait that has many components that know how to draw themselves and can handle input. Can also dispatch to the store
+
+## Cross compiling
+- RPi:
+  - arm-unknown-linux-gnueabihf
+- x86 linux generic (GNU)
+  - x86_64-unknown-linux-gnu
