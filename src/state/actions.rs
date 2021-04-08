@@ -27,6 +27,7 @@ pub enum AppAction {
     SetNotification(Option<Notification>),
     SetModal(Option<Modal>),
     SetSearchFilter(SearchFilterOption),
+    SetSelectedHost(Option<usize>),
     QueryComplete,
     RestartQuery,
     IterateFocus

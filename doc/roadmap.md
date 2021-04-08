@@ -33,8 +33,9 @@ Roadmap
 - [ ] Query-wide TCP port scan results
 - [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [ ] Individual result overview popup modal
+  - [ ] Additional TCP port scans of individual entry
+  - Branch result_func
 - [ ] Filter results by hostname
-- [ ] Additional TCP port scans of individual entry
 - [x] Clipboard copy functionality
 - [ ] Routing, Page system
 - [ ] Keyboard shortcuts and help menu

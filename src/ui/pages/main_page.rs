@@ -285,6 +285,14 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     None
                 },
 
+                // Host drill down
+                Key::Enter => {
+                    if let Some(idx) = store.state.table_state.selected() {
+                        store.dispatch(AppAction::SetSelectedHost(Some(idx)));
+                    }
+                    None
+                },
+
                 // Copy host IP to clipboard
                 Key::Char('c') | Key::Shift('C') => {
 

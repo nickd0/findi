@@ -1,6 +1,6 @@
 use tui::widgets::TableState;
 
-use crate::network::host::HostVec;
+use crate::network::host::{HostVec, Host};
 use crate::ui::components::search_filter::SearchFilterOption;
 use crate::ui::{
     pages::PageContent,
@@ -19,7 +19,19 @@ pub struct ApplicationState {
     pub table_state: TableState,
     pub notification: Option<Notification>,
     pub modal: Option<Modal>,
+    pub selected_host: Option<usize>,
     pub search_filter_opt: SearchFilterOption
     // TODO: should ui focus be part of application state?
     // pub focus: UiComponent
+}
+
+// State convenience methods
+impl ApplicationState {
+    pub fn get_selected_host(&self) -> Option<Host> {
+        if let Some(idx) = self.selected_host {
+            return Some(self.hosts[idx].clone())
+        }
+
+        None
+    }
 }

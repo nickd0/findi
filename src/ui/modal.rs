@@ -6,11 +6,12 @@ use crate::state::{
 };
 
 use crate::ui::event::Key;
+use crate::network::host::Host;
 
 use tui::{
     backend::Backend,
-    layout::{Constraint, Direction, Layout, Rect, Alignment},
-    widgets::{Block, Borders, Clear, Paragraph, Wrap},
+    layout::{Constraint, Direction, Layout, Rect, Alignment, Corner},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap, List, ListItem},
     style::{Style, Color},
     text::{Spans, Span},
     Frame,
@@ -19,6 +20,7 @@ use tui::{
 #[derive(Clone)]
 pub enum ModalType {
     YesNo,
+    Custom
 }
 
 #[derive(Clone)]
@@ -86,6 +88,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
+// TODO: draw specific modal types here
 pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
     let block = Block::default().title(modal.title).borders(Borders::ALL);
     let area = centered_rect(40, 30, f.size());
@@ -152,10 +155,120 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
         )
         .split(btn_layout[0]);
 
-    // let no_span = Paragraph::new("No");
     f.render_widget(modal_text, text_layout[1]);
     f.render_widget(yes_btn, btn_layout_x[1]);
     f.render_widget(no_btn, btn_layout_x[3]);
+}
+
+// TODO: consolidate modal drawing funcs
+pub fn draw_host_modal<B: Backend>(modal: Modal, host: &Host, f: &mut Frame<B>) {
+    let block = Block::default().title(modal.title).borders(Borders::ALL);
+    let area = centered_rect(40, 30, f.size());
+
+
+
+    f.render_widget(Clear, area); //this clears out the background
+    f.render_widget(block, area);
+
+
+    let msg_span = Spans::from(Span::from(modal.message));
+    let modal_text = Paragraph::new(msg_span).wrap(Wrap { trim: true });
+
+    let fields = vec![
+        ("IP", host.ip.to_string()),
+        ("Hostanme", match &host.host_name {
+            Some(Ok(hostname)) => hostname.to_owned(),
+            _ => "--".to_owned()
+        }),
+        ("Response time", match host.ping_res {
+            Some(dur) => dur.as_millis().to_string() + " ms",
+            None => "--".to_owned()
+        })
+    ];
+
+    // No reason for this to be dynamic yet
+    // let spacing = fields.iter().fold(0, |acc, (field, _)| {
+    //     if field.len() > acc {
+    //         return field.len()
+    //     }
+    //     acc
+    // });
+    let spacing = 13;
+
+    // array_map is unstable as of now
+    let field_spans: Vec<ListItem> = fields.iter().map(|(field, val)| {
+        ListItem::new(Spans::from(vec![
+            Span::from(*field),
+            Span::raw(" ".repeat(spacing - field.len() + 3)),
+            // TODO: improve this
+            Span::from(val.to_owned())
+        ]))
+    }).collect();
+    
+    // let ip_text = Spans::from(vec![
+    //     Span::from("IP"),
+    //     Span::raw("          "),
+    //     Span::from(host.ip.to_string())
+    // ]);
+
+    // let hostname_text = Spans::from(vec![
+    //     Span::from("Hostname"),
+    //     Span::raw("    "),
+    //     Span::from(match &host.host_name {
+    //         Some(Ok(hostname)) => hostname,
+    //         _ => "--"
+    //     })
+    // ]);
+
+    // let items: Vec<ListItem> = vec![
+    //     ListItem::new(ip_text),
+    //     ListItem::new(hostname_text)
+    // ];
+
+    let host_list = List::new(field_spans)
+        .start_corner(Corner::TopLeft);
+    
+    let btn_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage(60),
+                Constraint::Percentage(20),
+                Constraint::Percentage(20),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    let btn_layout_x = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(20),
+                Constraint::Percentage(20),
+                Constraint::Percentage(20),
+                Constraint::Percentage(20),
+                Constraint::Percentage(20),
+            ]
+            .as_ref(),
+        )
+        .split(btn_layout[1]);
+    
+    let text_layout = Layout::default()
+        .margin(2)
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(10),
+                Constraint::Percentage(80),
+                Constraint::Percentage(10),
+            ]
+        )
+        .split(btn_layout[0]);
+
+    f.render_widget(host_list, text_layout[1]);
+    // f.render_widget(yes_btn, btn_layout_x[1]);
+    // f.render_widget(no_btn, btn_layout_x[3]);
 }
 
 pub fn handle_modal_event(key: Key, store: &mut AppStateStore, _: SharedAppStateStore) {

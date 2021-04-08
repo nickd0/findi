@@ -55,6 +55,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
         // TODO: use a borrow and drop the lock_store later?
         let notif = lock_store.state.notification.clone();
         let modal = lock_store.state.modal.clone();
+        let selected = lock_store.state.get_selected_host();
         drop(lock_store);
 
         // Main draw loop
@@ -68,7 +69,12 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
             }
 
             if let Some(modal) = modal {
-                modal::draw_modal(modal, f)
+                // TODO: do this in a match instead of a branch
+                if let Some(sel_host) = selected {
+                    modal::draw_host_modal(modal, &sel_host, f)
+                } else {
+                    modal::draw_modal(modal, f)
+                }
             }
         })?;
 

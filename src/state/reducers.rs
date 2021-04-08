@@ -1,7 +1,10 @@
 use super::actions::{Action, AppAction};
 use super::application_state::ApplicationState;
 use crate::network::host::{Host};
-use crate::ui::notification::Notification;
+use crate::ui::{
+    notification::Notification,
+    modal::{Modal, ModalType},
+};
 
 pub trait Reducer<T: Action> {
   fn reduce(action: T, state: ApplicationState) -> ApplicationState;
@@ -87,6 +90,12 @@ impl Reducer<AppAction> for AppReducer {
                 state
             },
 
+            AppAction::SetSelectedHost(host) => {
+                state.selected_host = host;
+                state.modal = Some(Modal::new("Host info", "Host information", ModalType::Custom));
+                state
+            }
+
             _ => state
         }
     }
@@ -155,5 +164,25 @@ mod test {
         assert_eq!(new_state.query_state, true);
         assert_eq!(new_state.search_run, false);
         assert_eq!(new_state.notification.unwrap().message, "Host search complete");
+    }
+
+    #[test]
+    fn test_action_set_selected_host() {
+        let host_ip = Ipv4Addr::new(10, 0, 1, 1);
+        let host = Host::new(host_ip);
+
+        let mut init_state = ApplicationState::default();
+        init_state.hosts = vec![host];
+
+        let action = AppAction::SetSelectedHost(Some(0));
+        let new_state = test_helper_reduce_state(action, Some(init_state));
+
+        assert_eq!(new_state.get_selected_host().unwrap().ip, host_ip);
+
+        // Clear selected host
+        let action = AppAction::SetSelectedHost(None);
+        let new_state = test_helper_reduce_state(action, None);
+
+        assert_eq!(new_state.get_selected_host(), None);
     }
 }
