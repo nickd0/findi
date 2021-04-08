@@ -7,33 +7,40 @@ pub mod components;
 pub mod modal;
 pub mod notification;
 pub mod pages;
+pub mod event;
 
 use pages::{Page, draw_page, handle_page_events};
 
+use event::Key;
 use crate::state::store::SharedAppStateStore;
 use crate::GLOBAL_RUN;
 
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-use termion::event::{Key};
+use crossterm::{
+    terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    execute,
+};
+
 use tui::{
-    backend::TermionBackend,
+    backend::CrosstermBackend,
     Terminal,
 };
 use anyhow::Result;
 
-use std::io;
+use std::io::{self, Write};
 use std::sync::atomic::Ordering;
 use std::ops::DerefMut;
 
 pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
-    let stdout = io::stdout().into_raw_mode()?;
-    let backend = TermionBackend::new(stdout);
+    enable_raw_mode()?;
+
+    let mut stdout = io::stdout();
+
+    execute!(stdout, EnterAlternateScreen)?;
+
+    let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Uses termions async stdin for now,
-    // Does not work on windows
-    let mut stdin = termion::async_stdin().keys();
+    let evt_stream = event::async_event_reader();
 
     let curr_page = Page::MainPage;
 
@@ -70,8 +77,9 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
         // dispatch from here?
         //
         // TODO: profile deref-ing vs cloning the Arc here
-        // 
-        if let Some(Ok(key)) = stdin.next() {
+
+        // if let Some(Ok(key)) = stdin.next() {
+        if let Some(key) = evt_stream.recv.try_iter().next() {
             let mut lstore = store.lock().unwrap();
 
             handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
@@ -85,8 +93,14 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
                 _ => {}
             }
         }
+
+        if let Some(evt) = evt_stream.recv.try_iter().next() {
+            println!("EVENT {:?}", evt);
+        }
     }
-    terminal.clear()?;
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    terminal.show_cursor()?;
 
     Ok(())
 }

@@ -14,8 +14,8 @@ ipnet = "2.3.0"
 # structopt = "0.3"
 dns-lookup = "1.0"
 colored = "2"
-tui = "0.14"
-termion = "1.5"
+tui = { version = "0.14", default-features = false, features = ['crossterm'] }
+crossterm = "0.18"
 pnet = "0.27"
 serde = { version = "1.0", features = ["derive"] }
 bincode = "1.0"

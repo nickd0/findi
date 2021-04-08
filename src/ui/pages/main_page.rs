@@ -23,7 +23,7 @@ use crate::ui::{
     pages::PageContent
 };
 
-use termion::event::{Key};
+use crate::ui::event::Key;
 
 const JUMP_LEN: usize = 20;
 
@@ -256,6 +256,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 }
 
 // Page events handler
+// TODO: use keycode or key event here?
 pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: SharedAppStateStore) {
     // let mut store = store.lock().unwrap();
     match store.state.curr_focus {
@@ -266,11 +267,11 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                 // Char inputs
                 Key::Down | Key::Char('j') => s_table.next(),
                 Key::Up | Key::Char('k') => s_table.prev(),
-                Key::Char(' ') | Key::Char('J') | Key::PageDown => s_table.pgdn(),
-                Key::Ctrl(' ') | Key::Char('K') | Key::PageUp => s_table.pgup(),
+                Key::Char(' ') | Key::Shift('j') | Key::PageDown => s_table.pgdn(),
+                Key::Ctrl(' ') | Key::Shift('k') | Key::PageUp => s_table.pgup(),
 
                 // Focus shift
-                Key::Char('\t') => {
+                Key::Tab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
                     }
@@ -292,7 +293,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
         PageContent::SearchFilters => {
             match key {
                 // TODO: Don't love is_none check, but do love that events bubble through the UI
-                Key::Char('\t') => {
+                Key::Tab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
                     }
@@ -323,7 +324,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
         PageContent::QueryInput => {
             match key {
                 // TODO: Don't love is_none check, but do live that events bubble through the UI
-                Key::Char('\t') => {
+                Key::Tab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters))
                     }
@@ -344,7 +345,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     }
                 },
 
-                Key::Char('\n') => {
+                Key::Enter => {
                     let parsed = input_parse(&store.state.query);
                     store.dispatch(AppAction::SetInputErr(parsed.is_err()));
                     // Check if modal is visible and YES is selected, then parse and send hosts
@@ -440,8 +441,8 @@ mod test {
             (Key::Char('j'), 2),
             (Key::Up, 1),
             (Key::Char('k'), 0),
-            (Key::Char('J'), 20),
-            (Key::Char('K'), 0),
+            (Key::Shift('j'), 20),
+            (Key::Shift('k'), 0),
             (Key::Char(' '), 20),
         ];
 
@@ -454,8 +455,8 @@ mod test {
     #[test]
     fn test_main_page_focus_shift() {
         let events: [(Key, PageContent); 4] = [
-            (Key::Char('\t'), PageContent::QueryInput),
-            (Key::Char('\t'), PageContent::SearchFilters),
+            (Key::Tab, PageContent::QueryInput),
+            (Key::Tab, PageContent::SearchFilters),
             (Key::BackTab, PageContent::QueryInput),
             (Key::BackTab, PageContent::HostTable),
         ];
@@ -471,7 +472,7 @@ mod test {
         // When a modal is active, tab does not shift focus
 
         let events: [(Key, PageContent); 3] = [
-            (Key::Char('\t'), PageContent::HostTable),
+            (Key::Tab, PageContent::HostTable),
             (Key::BackTab, PageContent::HostTable),
             (Key::BackTab, PageContent::HostTable),
         ];
@@ -512,7 +513,7 @@ mod test {
 
         let events: [(Key, String); 1] = [
             // FIXME: test too rigid
-            (Key::Char('\n'), "Are you sure you want to start a new query? This will kill the current query.".to_owned()),
+            (Key::Enter, "Are you sure you want to start a new query? This will kill the current query.".to_owned()),
         ];
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
@@ -528,7 +529,7 @@ mod test {
         store.state.curr_focus = PageContent::QueryInput;
 
         let events: [(Key, bool); 1] = [
-            (Key::Char('\n'), true),
+            (Key::Enter, true),
         ];
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
@@ -543,7 +544,7 @@ mod test {
         store.state.curr_focus = PageContent::QueryInput;
 
         let events: [(Key, bool); 1] = [
-            (Key::Char('\n'), true),
+            (Key::Enter, true),
         ];
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
@@ -558,8 +559,8 @@ mod test {
         let events: [(Key, Option<usize>); 5] = [
             (Key::Char(' '), Some(0)),
             (Key::Char(' '), Some(20)),
-            (Key::Char('\t'), Some(20)),
-            (Key::Char('\t'), Some(20)),
+            (Key::Tab, Some(20)),
+            (Key::Tab, Some(20)),
             (Key::Char(' '), None),
         ];
 

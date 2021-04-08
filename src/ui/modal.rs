@@ -4,7 +4,9 @@ use crate::state::{
     actions::AppAction,
     store::{SharedAppStateStore, AppStateStore}
 };
-use termion::event::Key;
+
+use crate::ui::event::Key;
+
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect, Alignment},
@@ -38,7 +40,7 @@ impl Modal {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug, Copy)]
 pub enum ModalOpt {
     Yes,
     No,
@@ -158,14 +160,14 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
 
 pub fn handle_modal_event(key: Key, store: &mut AppStateStore, _: SharedAppStateStore) {
     match key {
-        Key::BackTab | Key::Char('\t') => {
+        Key::BackTab | Key::Tab => {
             let modal = store.state.modal.as_ref().unwrap();
             let mut mclone = modal.clone();
             mclone.selected.mut_toggle();
             store.dispatch(AppAction::SetModal(Some(mclone)))
         },
 
-        Key::Char('\n') => {
+        Key::Enter => {
             if let ModalOpt::No = store.state.modal.as_ref().unwrap().selected {
                 store.dispatch(AppAction::SetModal(None))
             }
@@ -177,4 +179,86 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, _: SharedAppState
 
         _ => {}
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::state::{
+        store::SharedAppStateStore,
+        application_state::ApplicationState
+    };
+    use crate::network::host::Host;
+    use std::net::Ipv4Addr;
+    use std::ops::DerefMut;
+    use std::sync::{Mutex, Arc};
+
+    #[test]
+    fn test_modal_event_tab() {
+        let mut store = AppStateStore::new();
+
+        let events: [(Key, ModalOpt); 3] = [
+            (Key::Tab, ModalOpt::No),
+            (Key::Tab, ModalOpt::Yes),
+            (Key::BackTab, ModalOpt::No),
+        ];
+
+        store.state.modal = Some(Modal::new("Test modal", "This is a test", ModalType::YesNo));
+
+        page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            state.modal.as_ref().unwrap().selected
+        })
+
+    }
+    
+    #[test]
+    fn test_modal_event_enter() {
+        let mut store = AppStateStore::new();
+
+        let events: [(Key, bool); 2] = [
+            (Key::Tab, true),
+            (Key::Enter, false),
+        ];
+
+        store.state.modal = Some(Modal::new("Test modal", "This is a test", ModalType::YesNo));
+
+        page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            state.modal.is_some()
+        })
+    }
+
+    #[test]
+    fn test_modal_event_esc() {
+        let mut store = AppStateStore::new();
+
+        let events: [(Key, bool); 2] = [
+            (Key::Tab, true),
+            (Key::Esc, false),
+        ];
+
+        store.state.modal = Some(Modal::new("Test modal", "This is a test", ModalType::YesNo));
+
+        page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            state.modal.is_some()
+        })
+    }
+
+    // TODO consolidate this with main_page assertion function
+    fn page_event_assertion<AssertResult: PartialEq + std::fmt::Debug, F: Fn(&ApplicationState) -> AssertResult>(
+        events: &[(Key, AssertResult)], lstore: SharedAppStateStore, state_fn: F
+    ) {
+
+        let mut store = lstore.lock().unwrap();
+        for n in 0..30u8 {
+            store.state.hosts.push(Host::new(Ipv4Addr::new(10, 0, 0, n)))
+        }
+
+        for (event, result) in events {
+            // let lstore1 = store_mtx.clone();
+            handle_modal_event(*event, store.deref_mut(), lstore.clone());
+            let res = state_fn(&store.state);
+            assert_eq!(res, *result, "Testing event {:?}: {:?} vs {:?}", event, res, *result);
+        }
+    }
+
 }

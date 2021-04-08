@@ -28,6 +28,8 @@ Roadmap
 
 ## v0.2.0
 - [ ] Use [crossterm](https://crates.io/crates/crossterm) backend
+  - branch `crossterm`
+  - Use terminal tick like in https://github.com/fdehau/tui-rs/blob/master/examples/crossterm_demo.rs
 - [ ] Query-wide TCP port scan results
 - [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [ ] Individual result overview popup modal
@@ -42,6 +44,7 @@ Roadmap
 ## v0.3.0
 - [ ] User settings for scan type, wait times, thread pool size, UI skins! (`CONFIG`)
 - [ ] Menu bar
+- [ ] Mouse event support
 - [ ] Service search: Multicast DNS to discover available services on the network (airplay, spotify connect, etc)
 - [ ] Carmen/traceroute integration for non-private queries
 - [ ] IPv6 support?

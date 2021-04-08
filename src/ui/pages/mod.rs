@@ -2,7 +2,8 @@ use tui::{
     Frame,
     backend::Backend,
 };
-use termion::event::{Key};
+
+use crate::ui::event::Key;
 
 use crate::state::store::{SharedAppStateStore, AppStateStore};
 

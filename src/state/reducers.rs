@@ -97,7 +97,7 @@ mod test {
     use super::*;
     use std::net::Ipv4Addr;
 
-    const default_addr: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 1);
+    const DEFAULT_ADDR: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 1);
 
     fn test_helper_reduce_state(action: AppAction, init_state: Option<ApplicationState>) -> ApplicationState {
         let state = match init_state {
@@ -120,17 +120,17 @@ mod test {
 
     #[test]
     fn test_action_update_host() {
-        let host = Host::new(default_addr);
+        let host = Host::new(DEFAULT_ADDR);
         let mut init_state = ApplicationState::default();
         init_state.hosts = vec![host];
 
-        let mut updated_host = Host::new(default_addr);
+        let mut updated_host = Host::new(DEFAULT_ADDR);
         updated_host.ping_done = true;
         let action = AppAction::UpdateHost(updated_host);
 
         let new_state = test_helper_reduce_state(action, Some(init_state));
 
-        assert_eq!(new_state.hosts[0].ip, default_addr);
+        assert_eq!(new_state.hosts[0].ip, DEFAULT_ADDR);
         assert_eq!(new_state.hosts[0].ping_done, true)
     }
 
