@@ -93,10 +93,6 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
                 _ => {}
             }
         }
-
-        if let Some(evt) = evt_stream.recv.try_iter().next() {
-            println!("EVENT {:?}", evt);
-        }
     }
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;

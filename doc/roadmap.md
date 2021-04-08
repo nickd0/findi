@@ -35,11 +35,12 @@ Roadmap
 - [ ] Individual result overview popup modal
 - [ ] Filter results by hostname
 - [ ] Additional TCP port scans of individual entry
-- [ ] Clipboard copy functionality
+- [x] Clipboard copy functionality
 - [ ] Routing, Page system
 - [ ] Keyboard shortcuts and help menu
 - [ ] Query by interface rather than only CIDR
 - [ ] Stdout only option with no UI
+- [ ] Help menu with keyboard shortcuts
 
 ## v0.3.0
 - [ ] User settings for scan type, wait times, thread pool size, UI skins! (`CONFIG`)

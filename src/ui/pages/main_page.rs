@@ -6,6 +6,7 @@ use tui::{
     widgets::{Block, Borders, Cell, Row, TableState, Table, Paragraph, Gauge},
     Frame,
 };
+use clipboard::{ClipboardProvider, ClipboardContext};
 
 use crate::state::store::{SharedAppStateStore, AppStateStore};
 use crate::ui::{
@@ -267,8 +268,8 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                 // Char inputs
                 Key::Down | Key::Char('j') => s_table.next(),
                 Key::Up | Key::Char('k') => s_table.prev(),
-                Key::Char(' ') | Key::Shift('j') | Key::PageDown => s_table.pgdn(),
-                Key::Ctrl(' ') | Key::Shift('k') | Key::PageUp => s_table.pgup(),
+                Key::Char(' ') | Key::Shift('J') | Key::PageDown => s_table.pgdn(),
+                Key::Ctrl(' ') | Key::Shift('K') | Key::PageUp => s_table.pgup(),
 
                 // Focus shift
                 Key::Tab => {
@@ -283,6 +284,43 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     }
                     None
                 },
+
+                // Copy host IP to clipboard
+                Key::Char('c') | Key::Shift('C') => {
+
+                    if let Some(host_idx) = store.state.table_state.selected() {
+                        let mut res_str = String::new();
+                        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+                        let hosts: Vec<&Host> = get_selected_hosts(&store.state.hosts, &store.state.search_filter_opt).collect();
+
+                        match key {
+                            Key::Char('c') => {
+                                let host_ip = hosts[host_idx].ip;
+                                res_str = format!("Address {} copied to clipboard", host_ip.to_string());
+                                ctx.set_contents(host_ip.to_string()).unwrap();
+                            },
+                            Key::Shift('C') => {
+                                if let Some(Ok(hostname)) = hosts[host_idx].host_name.as_ref() {
+                                    res_str = format!("Hostname {} copied to clipboard", hostname.to_owned());
+                                    ctx.set_contents(hostname.to_owned()).unwrap();
+                                }
+                            },
+                            _ => {}
+                        }
+
+                        if !res_str.is_empty() {
+                            store.dispatch(AppAction::SetNotification(
+                                Some(Notification::new(
+                                    "Status",
+                                    &res_str,
+                                    NotificationLevel::Info
+                                ))
+                            ));
+                        }
+                    }
+
+                    None
+                }
 
                 _ => None
             } {
@@ -441,8 +479,8 @@ mod test {
             (Key::Char('j'), 2),
             (Key::Up, 1),
             (Key::Char('k'), 0),
-            (Key::Shift('j'), 20),
-            (Key::Shift('k'), 0),
+            (Key::Shift('J'), 20),
+            (Key::Shift('K'), 0),
             (Key::Char(' '), 20),
         ];
 
@@ -566,6 +604,29 @@ mod test {
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
             state.table_state.selected()
+        });
+    }
+
+    #[test]
+    fn test_main_page_copy_ip() {
+        let mut store = AppStateStore::new();
+
+        let mut resolved_host = Host::new(Ipv4Addr::new(10, 0, 1, 0));
+        resolved_host.host_name = Some(Ok("foobar.local".to_owned()));
+        store.state.hosts.push(resolved_host);
+
+        let events: [(Key, Option<String>); 3] = [
+            (Key::Char('j'), None),
+            (Key::Char('c'), Some("Address 10.0.1.0 copied to clipboard".to_owned())),
+            (Key::Shift('C'), Some("Hostname foobar.local copied to clipboard".to_owned())),
+        ];
+
+        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            if let Some(notif) = state.notification.as_ref() {
+                Some(notif.message.to_owned())
+            } else {
+                None
+            }
         });
     }
 
