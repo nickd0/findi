@@ -88,7 +88,6 @@ pub fn init_host_search(store: SharedAppStateStore) {
             thread::sleep(Duration::from_millis(50));
             pool.execute(move || {
                 if !store_copy.lock().unwrap().state.search_run {
-                    // eprintln!("Interrupted! {:?}", host.ip);
                     return
                 }
                 let h = Host::host_ping(host.ip);

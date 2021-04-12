@@ -84,7 +84,6 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
         //
         // TODO: profile deref-ing vs cloning the Arc here
 
-        // if let Some(Ok(key)) = stdin.next() {
         if let Some(key) = evt_stream.recv.try_iter().next() {
             let mut lstore = store.lock().unwrap();
 
@@ -95,7 +94,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
             }
 
             match key {
-                Key::Ctrl('c') | Key::Esc => GLOBAL_RUN.store(false, Ordering::Release),
+                Key::Ctrl('c') | Key::Char('q') => GLOBAL_RUN.store(false, Ordering::Release),
                 _ => {}
             }
         }

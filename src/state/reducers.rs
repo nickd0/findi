@@ -1,5 +1,6 @@
 use super::actions::{Action, AppAction};
 use super::application_state::ApplicationState;
+use super::host_modal_state::HostModalState;
 use crate::network::host::{Host};
 use crate::ui::{
     notification::Notification,
@@ -73,6 +74,9 @@ impl Reducer<AppAction> for AppReducer {
             },
 
             AppAction::SetModal(modal) => {
+                if modal.is_none() {
+                    state.selected_host = None
+                }
                 state.modal = modal;
                 state
             },
@@ -92,7 +96,16 @@ impl Reducer<AppAction> for AppReducer {
 
             AppAction::SetSelectedHost(host) => {
                 state.selected_host = host;
-                state.modal = Some(Modal::new("Host info", "Host information", ModalType::Custom));
+                match state.selected_host {
+                    Some(_) => {
+                        state.modal = Some(Modal::new("Host info", "Host information", ModalType::Custom));
+                        state.modal_state = Some(HostModalState::new(state.get_selected_host().unwrap()));
+                    },
+                    None => {
+                        state.modal = None;
+                        state.modal_state = None;
+                    }
+                }
                 state
             }
 
@@ -178,6 +191,8 @@ mod test {
         let new_state = test_helper_reduce_state(action, Some(init_state));
 
         assert_eq!(new_state.get_selected_host().unwrap().ip, host_ip);
+
+        assert_eq!(new_state.modal_state.is_some(), true);
 
         // Clear selected host
         let action = AppAction::SetSelectedHost(None);

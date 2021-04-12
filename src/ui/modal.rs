@@ -11,8 +11,11 @@ use crate::network::host::Host;
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect, Alignment, Corner},
-    widgets::{Block, Borders, Clear, Paragraph, Wrap, List, ListItem},
-    style::{Style, Color},
+    widgets::{
+        Block, Borders, Clear, Tabs,
+        Paragraph, Wrap, List, ListItem
+    },
+    style::{Style, Color, Modifier},
     text::{Spans, Span},
     Frame,
 };
@@ -163,96 +166,82 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
 // TODO: consolidate modal drawing funcs
 pub fn draw_host_modal<B: Backend>(modal: Modal, host: &Host, f: &mut Frame<B>) {
     let block = Block::default().title(modal.title).borders(Borders::ALL);
-    let area = centered_rect(40, 30, f.size());
+    let area = centered_rect(30, 50, f.size());
 
 
 
     f.render_widget(Clear, area); //this clears out the background
     f.render_widget(block, area);
 
+    let btn_layout = Layout::default()
+        .margin(2)
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Max(2),
+                Constraint::Percentage(60),
+                Constraint::Percentage(15),
+            ]
+            .as_ref(),
+        )
+        .split(area);
 
-    let msg_span = Spans::from(Span::from(modal.message));
-    let modal_text = Paragraph::new(msg_span).wrap(Wrap { trim: true });
+    let titles = vec!["Host info", "Port scan"]
+        .iter()
+        .map(|t| {
+            let (first, rest) = t.split_at(1);
+            Spans::from(vec![
+                Span::styled(first, Style::default().fg(Color::Yellow)),
+                Span::styled(rest, Style::default().fg(Color::Green)),
+            ])
+        })
+        .collect();
+
+    let tabs = Tabs::new(titles)
+        .block(Block::default().borders(Borders::BOTTOM))
+        .select(1)
+        .style(Style::default().fg(Color::Cyan))
+        .highlight_style(
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .bg(Color::Black),
+        );
+    f.render_widget(tabs, btn_layout[0]);
 
     let fields = vec![
         ("IP", host.ip.to_string()),
+        ("Response time", match host.ping_res {
+            Some(dur) => dur.as_millis().to_string() + " ms",
+            None => "--".to_owned()
+        }),
+        ("Ping type", match host.ping_type {
+            Some(ptype) => ptype.to_string(),
+            None => "--".to_owned()
+        }),
         ("Hostanme", match &host.host_name {
             Some(Ok(hostname)) => hostname.to_owned(),
             _ => "--".to_owned()
         }),
-        ("Response time", match host.ping_res {
-            Some(dur) => dur.as_millis().to_string() + " ms",
+        ("Resolution type", match host.res_type {
+            Some(rtype) => rtype.to_string(),
             None => "--".to_owned()
         })
     ];
 
-    // No reason for this to be dynamic yet
-    // let spacing = fields.iter().fold(0, |acc, (field, _)| {
-    //     if field.len() > acc {
-    //         return field.len()
-    //     }
-    //     acc
-    // });
-    let spacing = 13;
+    let spacing = 15;
 
     // array_map is unstable as of now
     let field_spans: Vec<ListItem> = fields.iter().map(|(field, val)| {
         ListItem::new(Spans::from(vec![
-            Span::from(*field),
+            Span::styled(*field, Style::default().add_modifier(Modifier::BOLD)),
             Span::raw(" ".repeat(spacing - field.len() + 3)),
             // TODO: improve this
             Span::from(val.to_owned())
         ]))
     }).collect();
     
-    // let ip_text = Spans::from(vec![
-    //     Span::from("IP"),
-    //     Span::raw("          "),
-    //     Span::from(host.ip.to_string())
-    // ]);
-
-    // let hostname_text = Spans::from(vec![
-    //     Span::from("Hostname"),
-    //     Span::raw("    "),
-    //     Span::from(match &host.host_name {
-    //         Some(Ok(hostname)) => hostname,
-    //         _ => "--"
-    //     })
-    // ]);
-
-    // let items: Vec<ListItem> = vec![
-    //     ListItem::new(ip_text),
-    //     ListItem::new(hostname_text)
-    // ];
-
     let host_list = List::new(field_spans)
         .start_corner(Corner::TopLeft);
-    
-    let btn_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Percentage(60),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-            ]
-            .as_ref(),
-        )
-        .split(area);
-
-    let btn_layout_x = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-            ]
-            .as_ref(),
-        )
-        .split(btn_layout[1]);
     
     let text_layout = Layout::default()
         .margin(2)
@@ -264,13 +253,12 @@ pub fn draw_host_modal<B: Backend>(modal: Modal, host: &Host, f: &mut Frame<B>) 
                 Constraint::Percentage(10),
             ]
         )
-        .split(btn_layout[0]);
+        .split(btn_layout[1]);
 
     f.render_widget(host_list, text_layout[1]);
-    // f.render_widget(yes_btn, btn_layout_x[1]);
-    // f.render_widget(no_btn, btn_layout_x[3]);
 }
 
+// TODO dispatch these events to the current modal state
 pub fn handle_modal_event(key: Key, store: &mut AppStateStore, _: SharedAppStateStore) {
     match key {
         Key::BackTab | Key::Tab => {

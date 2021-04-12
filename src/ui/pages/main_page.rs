@@ -18,7 +18,7 @@ use crate::state::actions::AppAction;
 use crate::network::{
     input_parse,
     init_host_search,
-    host::{PingType, Host, HostVec}
+    host::{PingType, Host}
 };
 use crate::ui::{
     pages::PageContent
@@ -193,7 +193,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         .height(1)
         .bottom_margin(1);
     
-    let rows = get_selected_hosts(&lstore.state.hosts, &lstore.state.search_filter_opt).map(|host| {
+    let rows = lstore.state.filtered_hosts().map(|host| {
         let mut style = Style::default();
         let mut status_cell = Cell::from("?");
         if let Some(dur) = host.ping_res {
@@ -262,7 +262,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
     // let mut store = store.lock().unwrap();
     match store.state.curr_focus {
         PageContent::HostTable => {
-            let s_hosts: Vec<&Host> = get_selected_hosts(&store.state.hosts, &store.state.search_filter_opt).collect();
+            let s_hosts: Vec<&Host> = store.state.filtered_hosts().collect();
             let s_table = StatefulTable::new(&store.state.table_state, &s_hosts);
             if let Some(table_idx) = match key {
                 // Char inputs
@@ -299,7 +299,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     if let Some(host_idx) = store.state.table_state.selected() {
                         let mut res_str = String::new();
                         let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-                        let hosts: Vec<&Host> = get_selected_hosts(&store.state.hosts, &store.state.search_filter_opt).collect();
+                        let hosts: Vec<&Host> = store.state.filtered_hosts().collect();
 
                         match key {
                             Key::Char('c') => {
@@ -456,17 +456,6 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
             }
         }
     }
-}
-
-#[allow(clippy::ptr_arg)]
-fn get_selected_hosts<'a>(hosts: &'a HostVec, search_opt: &'a SearchFilterOption) -> impl Iterator<Item = &'a Host> {
-    hosts.iter().filter(move |&h| {
-        if matches!(search_opt, SearchFilterOption::ShowFound) {
-            h.ping_res.is_some() || h.host_name.as_ref().unwrap_or(&Err(String::new())).is_ok()
-        } else {
-            true
-        }
-    })
 }
 
 #[cfg(test)]

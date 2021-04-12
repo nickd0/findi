@@ -8,6 +8,8 @@ use crate::ui::{
     modal::Modal,
 };
 
+use super::host_modal_state::HostModalState;
+
 #[derive(Default, Clone)]
 pub struct ApplicationState {
     pub hosts: HostVec,
@@ -20,6 +22,8 @@ pub struct ApplicationState {
     pub notification: Option<Notification>,
     pub modal: Option<Modal>,
     pub selected_host: Option<usize>,
+    // pub modal_state: Option<dyn ModalStateType>,
+    pub modal_state: Option<HostModalState>,
     pub search_filter_opt: SearchFilterOption
     // TODO: should ui focus be part of application state?
     // pub focus: UiComponent
@@ -29,9 +33,19 @@ pub struct ApplicationState {
 impl ApplicationState {
     pub fn get_selected_host(&self) -> Option<Host> {
         if let Some(idx) = self.selected_host {
-            return Some(self.hosts[idx].clone())
+            return Some(self.filtered_hosts().nth(idx).unwrap().clone())
         }
 
         None
+    }
+
+    pub fn filtered_hosts(&self) -> impl Iterator<Item = &Host> {
+        self.hosts.iter().filter(move |&h| {
+            if matches!(self.search_filter_opt, SearchFilterOption::ShowFound) {
+                h.ping_res.is_some() || h.host_name.as_ref().unwrap_or(&Err(String::new())).is_ok()
+            } else {
+                true
+            }
+        })
     }
 }
