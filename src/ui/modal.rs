@@ -2,7 +2,8 @@
 
 use crate::state::{
     actions::AppAction,
-    store::{SharedAppStateStore, AppStateStore}
+    store::{SharedAppStateStore, AppStateStore},
+    host_modal_state::{HostModalState, HostModalAction}
 };
 
 use crate::ui::event::Key;
@@ -164,13 +165,12 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
 }
 
 // TODO: consolidate modal drawing funcs
-pub fn draw_host_modal<B: Backend>(modal: Modal, host: &Host, f: &mut Frame<B>) {
+pub fn draw_host_modal<B: Backend>(modal: Modal, host: &Host, lstore: SharedAppStateStore, f: &mut Frame<B>) {
     let block = Block::default().title(modal.title).borders(Borders::ALL);
     let area = centered_rect(30, 50, f.size());
+    let store = lstore.lock().unwrap();
 
-
-
-    f.render_widget(Clear, area); //this clears out the background
+    f.render_widget(Clear, area);
     f.render_widget(block, area);
 
     let btn_layout = Layout::default()
@@ -186,12 +186,13 @@ pub fn draw_host_modal<B: Backend>(modal: Modal, host: &Host, f: &mut Frame<B>) 
         )
         .split(area);
 
-    let titles = vec!["Host info", "Port scan"]
+    let titles = store.state.modal_state.as_ref().unwrap().tab_state.titles
+    // let titles = vec!["Host info", "Port scan"]
         .iter()
         .map(|t| {
             let (first, rest) = t.split_at(1);
             Spans::from(vec![
-                Span::styled(first, Style::default().fg(Color::Yellow)),
+                Span::styled(first, Style::default().add_modifier(Modifier::UNDERLINED)),
                 Span::styled(rest, Style::default().fg(Color::Green)),
             ])
         })
@@ -199,7 +200,7 @@ pub fn draw_host_modal<B: Backend>(modal: Modal, host: &Host, f: &mut Frame<B>) 
 
     let tabs = Tabs::new(titles)
         .block(Block::default().borders(Borders::BOTTOM))
-        .select(1)
+        .select(store.state.modal_state.as_ref().unwrap().tab_state.index)
         .style(Style::default().fg(Color::Cyan))
         .highlight_style(
             Style::default()
@@ -277,6 +278,21 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, _: SharedAppState
         Key::Esc => {
             store.dispatch(AppAction::SetModal(None))
         },
+
+        Key::Char(c) => {
+            match &mut store.state.modal_state {
+                Some(modal_state) => {
+                    let mut idx: usize = modal_state.tab_state.index;
+                    for (i, title) in modal_state.tab_state.titles.iter().enumerate() {
+                        if title.to_ascii_lowercase().chars().nth(0).unwrap() == c {
+                            idx = i
+                        }
+                    }
+                    store.dispatch(AppAction::SetModalAction(HostModalAction::SetSelected(idx)))
+                },
+                None => {}
+            }
+        }
 
         _ => {}
     }

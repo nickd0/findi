@@ -60,6 +60,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
 
         // Main draw loop
         terminal.draw(|f| {
+            // FIXME: pass borrowed store instead of Arc
             draw_page(&curr_page, store.clone(), f);
             // TODO draw common elements controlled by appstate here,
             // ie Modal, notification, etc
@@ -71,7 +72,7 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
             if let Some(modal) = modal {
                 // TODO: do this in a match instead of a branch
                 if let Some(sel_host) = selected {
-                    modal::draw_host_modal(modal, &sel_host, f)
+                    modal::draw_host_modal(modal, &sel_host, store.clone(), f)
                 } else {
                     modal::draw_modal(modal, f)
                 }

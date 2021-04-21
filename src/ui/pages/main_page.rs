@@ -351,7 +351,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     }
                 },
 
-                Key::Down | Key::Up | Key::Char(' ') => {
+                Key::Left | Key::Right | Key::Char(' ') => {
                     match store.state.search_filter_opt {
                         SearchFilterOption::ShowFound => store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowAll)),
                         SearchFilterOption::ShowAll => {
@@ -362,7 +362,12 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                             ]);
                         },
                     }
-                }
+                },
+
+                Key::Down => {
+                    store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
+                },
+
                 _ => {}
             }
         }
@@ -601,6 +606,23 @@ mod test {
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
             state.table_state.selected()
+        });
+    }
+
+
+    #[test]
+    fn test_main_page_filters_navigate() {
+        let mut store = AppStateStore::new();
+
+        store.state.curr_focus = PageContent::SearchFilters;
+        let events: [(Key, (SearchFilterOption, PageContent)); 3] = [
+            (Key::Left, (SearchFilterOption::ShowFound, PageContent::SearchFilters)),
+            (Key::Left, (SearchFilterOption::ShowAll, PageContent::SearchFilters)),
+            (Key::Down, (SearchFilterOption::ShowAll, PageContent::HostTable)),
+        ];
+
+        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            (state.search_filter_opt, state.curr_focus)
         });
     }
 

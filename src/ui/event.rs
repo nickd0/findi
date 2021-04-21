@@ -24,6 +24,8 @@ pub enum Key {
     BackTab,
     Up,
     Down,
+    Left,
+    Right,
     PageUp,
     PageDown,
     Backspace,
@@ -47,6 +49,20 @@ impl From<KeyEvent> for Key {
                 ..
             } => {
                 Key::Down
+            },
+
+            KeyEvent {
+                code: KeyCode::Left,
+                ..
+            } => {
+                Key::Left
+            },
+
+            KeyEvent {
+                code: KeyCode::Right,
+                ..
+            } => {
+                Key::Right
             },
 
             KeyEvent {

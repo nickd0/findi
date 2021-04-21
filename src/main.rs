@@ -67,11 +67,12 @@ fn main() {
             hosts = ipn.iter().collect();
             query = ipn.to_string();
         } else {
-            return println!("Currently only interfaces with an IPv4 address can be used. Current interface: {:?}", default_iface)
+            eprintln!("Currently only interfaces with an IPv4 address can be used. Current interface: {:?}", default_iface);
+            exit(1);
         }
 
     } else {
-        println!("No input provided and could not find an available interface!");
+        eprintln!("No input provided and could not find an available interface!");
         exit(1);
     }
 

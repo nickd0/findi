@@ -160,6 +160,7 @@ dependencies = [
  "dns-lookup",
  "ipnet",
  "pnet",
+ "regex",
  "serde",
  "serde_repr",
  "threadpool",

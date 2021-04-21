@@ -1,6 +1,6 @@
 use super::actions::{Action, AppAction};
 use super::application_state::ApplicationState;
-use super::host_modal_state::HostModalState;
+use super::host_modal_state::{HostModalState, HostModalAction};
 use crate::network::host::{Host};
 use crate::ui::{
     notification::Notification,
@@ -107,7 +107,18 @@ impl Reducer<AppAction> for AppReducer {
                     }
                 }
                 state
-            }
+            },
+
+            AppAction::SetModalAction(action) => {
+                match action {
+                    HostModalAction::SetSelected(idx) => {
+                        let mut tab_state = state.modal_state.unwrap().clone();
+                        tab_state.tab_state.index = idx;
+                        state.modal_state = Some(tab_state);
+                    }
+                }
+                state
+            },
 
             _ => state
         }

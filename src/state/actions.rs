@@ -8,6 +8,7 @@ use crate::ui::{
 };
 use crate::ui::notification::Notification;
 use crate::ui::modal::Modal;
+use crate::state::host_modal_state::HostModalAction;
 
 use std::net::Ipv4Addr;
 
@@ -28,6 +29,7 @@ pub enum AppAction {
     SetModal(Option<Modal>),
     SetSearchFilter(SearchFilterOption),
     SetSelectedHost(Option<usize>),
+    SetModalAction(HostModalAction),
     QueryComplete,
     RestartQuery,
     IterateFocus
