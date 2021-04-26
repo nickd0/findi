@@ -207,21 +207,19 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         if let Some(ping_type) = host.ping_type {
             ping_cell = Cell::from(ping_type.to_string());
 
-            if let PingType::TCP = ping_type {
-                port_cell = Cell::from(
-                    host.tcp_ports.iter()
-                        .map(|p| p.to_string())
-                        .collect::<Vec<String>>()
-                        .join(",")
-                )
-            }
+            port_cell = Cell::from(
+                host.tcp_ports.iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            );
         }
 
         if let Some(host_name) = &host.host_name {
             match host_name {
                 Ok(hn) => {
-                style = style.fg(Color::Green);
-                host_cell = Cell::from(hn.to_string())
+                    style = style.fg(Color::Green);
+                    host_cell = Cell::from(hn.to_string())
                 },
                 Err(_) => host_cell = Cell::from("x")
             }

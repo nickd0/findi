@@ -159,6 +159,7 @@ dependencies = [
  "crossterm",
  "dns-lookup",
  "ipnet",
+ "lazy_static",
  "pnet",
  "regex",
  "serde",

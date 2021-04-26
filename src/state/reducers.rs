@@ -1,10 +1,15 @@
 use super::actions::{Action, AppAction};
 use super::application_state::ApplicationState;
 use super::host_modal_state::{HostModalState, HostModalAction};
-use crate::network::host::{Host};
+use crate::network::{
+    host::Host,
+    tcp_ping::parse_portlist
+};
+
 use crate::ui::{
     notification::Notification,
     modal::{Modal, ModalType},
+    event::Key
 };
 
 pub trait Reducer<T: Action> {
@@ -22,6 +27,7 @@ impl Reducer<AppAction> for AppReducer {
                 state
             },
 
+            // TODO: O(n), use a hashed data structure?
             AppAction::UpdateHost(host) => {
                 if let Some(idx) = state.hosts.iter().position(|h| h.ip == host.ip) {
                     state.hosts[idx] = host;
@@ -110,11 +116,53 @@ impl Reducer<AppAction> for AppReducer {
             },
 
             AppAction::SetModalAction(action) => {
+                let mut modal_state = state.modal_state.clone().unwrap();
                 match action {
                     HostModalAction::SetSelected(idx) => {
-                        let mut tab_state = state.modal_state.unwrap().clone();
-                        tab_state.tab_state.index = idx;
-                        state.modal_state = Some(tab_state);
+                        modal_state.tab_state.index = idx;
+                        state.modal_state = Some(modal_state);
+                    },
+
+                    HostModalAction::SetPortQueryInput(key) => {
+                        match key {
+                            Key::Char(c) => modal_state.port_query.push(c),
+                            Key::Backspace => {
+                                let qlen = modal_state.port_query.len();
+                                if qlen > 0 {
+                                    modal_state.port_query = modal_state.port_query[..qlen - 1].to_string()
+                                }
+                            },
+                            _ => {}
+                        }
+
+                        match parse_portlist(&modal_state.port_query) {
+                            Ok(ports) => {
+                                // TODO: performance evaluation
+                                modal_state.ports = ports.iter().map(|p| (*p, None)).collect();
+                            },
+                            Err(_) => {}
+                        }
+
+                        state.modal_state = Some(modal_state);
+                    },
+
+                    HostModalAction::SetPortScanResult(res) => {
+                        // TODO: Another O(n) operation
+                        if let Some(idx) = modal_state.ports.iter().position(|p| p.0 == res.0) {
+                            modal_state.ports[idx] = res;
+
+                            // Add to active TCP ports
+                            match res.1 {
+                                Some(Ok(_)) => {
+                                    if let Some(idx) = state.hosts.iter().position(|h| h.ip == modal_state.selected_host.ip) {
+                                        state.hosts[idx].tcp_ports.push(res.0)
+                                    }
+                                },
+                                _ => {}
+                            }
+                        }
+
+                        state.modal_state = Some(modal_state);
                     }
                 }
                 state

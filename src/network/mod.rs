@@ -3,8 +3,13 @@ pub mod udp_ping;
 pub mod tcp_ping;
 pub mod host;
 pub mod dns;
+pub mod port_list;
 
-use crate::state::store::SharedAppStateStore;
+use crate::state::{
+    host_modal_state::{HostModalState, HostModalAction},
+    store::SharedAppStateStore
+};
+
 use crate::network::host::Host;
 use crate::config::AppConfig;
 use crate::state::actions::AppAction;
@@ -32,9 +37,10 @@ pub fn input_parse(input: &str) -> Result<Vec<Ipv4Addr>> {
         }
 
         // Validate only private networks for now
-        if !ipn.network().is_private() {
-            return Err(anyhow!("Only private IP networks as defined in IETF RFC1918 can be scanned for now"))
-        }
+        // TODO: make this an option?
+        // if !ipn.network().is_private() {
+        //     return Err(anyhow!("Only private IP networks as defined in IETF RFC1918 can be scanned for now"))
+        // }
         Ok(ipn.iter().collect())
     } else {
         Err(anyhow!("Please provide a valid IPv4 CIDR network"))
@@ -98,5 +104,26 @@ pub fn init_host_search(store: SharedAppStateStore) {
         pool.join();
         // Need to check if the query was interrupted or not
         store.lock().unwrap().dispatch(AppAction::QueryComplete);
+    });
+}
+
+/// TODO: combine with the above for a single shared resouce access func
+/// TODO: ensure this isn't dispatched more than once
+pub fn dispatch_port_scan(store: SharedAppStateStore) {
+    thread::spawn(move || {
+        let lstore = store.lock().unwrap();
+        let modal_state: HostModalState = lstore.state.modal_state.clone().unwrap();
+        drop(lstore);
+
+        for (port, _) in modal_state.ports {
+            if !GLOBAL_RUN.load(Ordering::Acquire) {
+                break
+            }
+
+            match tcp_ping::tcp_scan_port(&modal_state.selected_host.ip, port) {
+                Ok(dur) => store.lock().unwrap().dispatch(AppAction::SetModalAction(HostModalAction::SetPortScanResult((port, Some(Ok(dur)))))),
+                Err(_) => store.lock().unwrap().dispatch(AppAction::SetModalAction(HostModalAction::SetPortScanResult((port, Some(Err(())))))),
+            }
+        }
     });
 }

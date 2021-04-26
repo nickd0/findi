@@ -15,7 +15,7 @@ pub struct TcpPortPing {
     pub result: PingResult
 }
 
-pub fn parse_portlist(plist_str: &str) -> Result<Vec<u16>> {
+pub fn parse_portlist(ref plist_str: &str) -> Result<Vec<u16>> {
     let mut plist: HashSet<u16> = HashSet::new();
     let groups = plist_str.split(",");
     let re = regex::Regex::new(r"(\d+)\s*-\s*(\d+)").unwrap();
@@ -53,7 +53,7 @@ pub fn tcp_scan_portlist(ip: &Ipv4Addr, ports: &[u16]) -> Vec<PingResult> {
     ports.iter().map(|&port| tcp_scan_port(ip, port)).collect()
 }
 
-fn tcp_scan_port(ip: &Ipv4Addr, port: u16) -> PingResult {
+pub fn tcp_scan_port(ip: &Ipv4Addr, port: u16) -> PingResult {
     let now = Instant::now();
     let sockaddr = SocketAddr::new(IpAddr::V4(*ip), port);
     // TODO: config

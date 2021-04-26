@@ -88,10 +88,11 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
         if let Some(key) = evt_stream.recv.try_iter().next() {
             let mut lstore = store.lock().unwrap();
 
-            handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
-
+            // TODO: use match
             if lstore.state.modal.is_some() {
                 modal::handle_modal_event(key, lstore.deref_mut(), store.clone())
+            } else {
+                handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
             }
 
             match key {
