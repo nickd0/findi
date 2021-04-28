@@ -29,6 +29,7 @@ use std::sync::atomic::{AtomicBool};
 use pnet::ipnetwork::IpNetwork;
 use pnet::datalink;
 use clap::{App, Arg, ArgMatches};
+use colored::Colorize;
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
 
@@ -105,11 +106,41 @@ fn main() {
 
     let shared_store = Arc::new(Mutex::new(store));
 
-    #[cfg(feature = "ui")]
-    let ui_thread = start_ui(shared_store.clone());
-
-    init_host_search(shared_store);
+    init_host_search(shared_store.clone());
 
     #[cfg(feature = "ui")]
-    let _ = ui_thread.join();
+    if !matches.is_present("disable_ui") {
+        let ui_thread = start_ui(shared_store.clone());
+
+
+        let _ = ui_thread.join();
+    } else {
+        // TODO: move this elsewhere and accept an argument for different types out output
+        // ie stdout, csv, json, etc
+
+        let lstore = shared_store.clone();
+        let mut hostidx: usize = 0;
+        loop {
+            let hstore = lstore.lock().unwrap();
+            if hostidx >= hstore.state.hosts.len() {
+                break
+            }
+
+            let host = &hstore.state.hosts[hostidx];
+            if host.ping_done {
+                if let Some(dur) = host.ping_res {
+                    println!(
+                        "Live host {} {}",
+
+                        format!("{:<28}", format!("{:?} ({:.2?}ms)", host.ip, dur.as_millis())),
+                        match &host.host_name {
+                            Some(Ok(hostname)) => hostname.green(),
+                            _ => "--".red()
+                        },
+                    )
+                }
+                hostidx += 1;
+            }
+        }
+    }
 }
