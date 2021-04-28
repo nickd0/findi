@@ -42,6 +42,7 @@ Roadmap
 - [ ] Query by interface rather than only CIDR
 - [ ] Default port scan option/filtering
 - [ ] Stdout only option with no UI
+  - branch `cli_args`
   - Options parser with Clap
 - [ ] Help menu with keyboard shortcuts
 

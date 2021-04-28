@@ -25,10 +25,10 @@ use std::process::exit;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool};
-use std::env;
 
 use pnet::ipnetwork::IpNetwork;
 use pnet::datalink;
+use clap::{App, Arg, ArgMatches};
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
 
@@ -39,7 +39,30 @@ fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
     })
 }
 
+fn parse_args<'a>() -> ArgMatches<'a> {
+    App::new("findi")
+        .version("0.1.0")
+        .author("Nick Donald <nickjdonald@gmail.com>")
+        .about("A local network discovery tool")
+
+        .arg(Arg::with_name("disable_ui")
+            .short("n")
+            .long("no-ui")
+            .help("Disable the TUI app"))
+
+        .arg(Arg::with_name("custom_cidr")
+            .short("c")
+            .long("cidr")
+            .help("Network host query in CIDR notation")
+            .takes_value(true))
+
+        .get_matches()
+}
+
 fn main() {
+
+    let matches = parse_args();
+
     let interfaces = datalink::interfaces();
     let default_iface = interfaces
         .iter()
@@ -52,13 +75,13 @@ fn main() {
     let hosts: Vec<Ipv4Addr>;
     let query: String;
 
-    if let Some(input) = env::args().nth(1) {
+    if let Some(input) = matches.value_of("custom_cidr") {
         match input_parse(&input) {
             Ok(hs) => hosts = hs,
             Err(msg) => return println!("{}", msg)
         }
 
-        query = input;
+        query = input.to_owned();
 
     // } else if default_iface.is_some() {
     } else if let Some(default_if_some) = default_iface {
