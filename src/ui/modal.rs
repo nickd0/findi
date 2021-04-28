@@ -6,14 +6,20 @@ use crate::state::{
     host_modal_state::HostModalAction
 };
 
-use crate::ui::components::text_input::{text_input, InputStyleState};
 use super::components::selectable_title::selectable_title;
 
-use crate::ui::event::Key;
+use crate::ui::{
+    event::Key,
+    pages::PageContent,
+    components::text_input::{text_input, InputStyleState}
+};
+
 use crate::network::{
     port_list::get_port_desc,
     host::Host,
-    dispatch_port_scan
+    dispatch_port_scan,
+    input_parse,
+    init_host_search
 };
 
 use std::convert::TryInto;
@@ -354,12 +360,27 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, lstore: SharedApp
         },
 
         Key::Enter => {
-            if let ModalOpt::No = store.state.modal.as_ref().unwrap().selected {
-                store.dispatch(AppAction::SetModal(None))
-            }
-
             if store.state.modal_state.is_some() {
-                dispatch_port_scan(lstore.clone())
+                dispatch_port_scan(lstore)
+            } else {
+                match store.state.modal.as_ref().unwrap().selected {
+                    ModalOpt::No => store.dispatch(AppAction::SetModal(None)),
+
+                    ModalOpt::Yes => {
+                        let parsed = input_parse(&store.state.query);
+                        store.dispatches(vec![
+                            AppAction::SetHostSearchRun(false),
+                            AppAction::SetModal(None),
+                            AppAction::BuildHosts(parsed.unwrap()),
+                            AppAction::ShiftFocus(PageContent::HostTable)
+                        ]);
+                        // TODO: Should this be done from some sort of Thunk action?
+                        // Problem is that the store is wrapped in a mutex currently
+                        // and so does not have access to a thread-safe reference
+                        init_host_search(lstore)
+
+                    }
+                }
             }
 
             // TODO: just dispatch the enter action and let the modal reducer take care of it?
@@ -375,7 +396,7 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, lstore: SharedApp
                 Some(modal_state) => {
                     let mut idx: usize = modal_state.tab_state.index;
                     for (i, title) in modal_state.tab_state.titles.iter().enumerate() {
-                        if title.to_ascii_lowercase().chars().nth(0).unwrap() == c {
+                        if title.to_ascii_lowercase().starts_with(c) {
                             idx = i
                         }
                     }
@@ -386,19 +407,12 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, lstore: SharedApp
                         store.dispatch(AppAction::SetModalAction(HostModalAction::SetPortQueryInput(key)))
                     }
 
-                    // match modal_state.selected_component {
-                    //     0 => {
-                    //         if c.is_ascii_digit() || c == '-' || c == ',' {
-
-                    //         }
-                    //     },
-
-                    //     _ => {}
-                    // }
                 },
+
                 None => {}
             }
         },
+
         Key::Backspace => store.dispatch(AppAction::SetModalAction(HostModalAction::SetPortQueryInput(key))),
 
         _ => {}

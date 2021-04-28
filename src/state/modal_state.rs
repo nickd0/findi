@@ -12,10 +12,10 @@ pub trait ModalStateType: Clone {
 /// modal state for any type of modal. Then use a function that accepts
 /// a struct of trait ModalStateType to handle the event and render the modal
 /// Could expand this into a component system?
-pub enum ModalRenderer {
-    Confirm,
-    Host
-}
+// pub enum ModalRenderer {
+//     Confirm,
+//     Host
+// }
 
 #[derive(Clone)]
 pub struct ModalState {

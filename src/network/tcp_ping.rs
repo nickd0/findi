@@ -3,21 +3,15 @@ use std::net::{TcpStream, Ipv4Addr, IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 use std::collections::HashSet;
 
-use regex;
 use anyhow::{Result, anyhow};
 
 use super::ping_result::PingResult;
 
 pub const TCP_PING_PORT: u16 = 80;
 
-pub struct TcpPortPing {
-    pub port: u16,
-    pub result: PingResult
-}
-
-pub fn parse_portlist(ref plist_str: &str) -> Result<Vec<u16>> {
+pub fn parse_portlist(plist_str: &str) -> Result<Vec<u16>> {
     let mut plist: HashSet<u16> = HashSet::new();
-    let groups = plist_str.split(",");
+    let groups = plist_str.split(',');
     let re = regex::Regex::new(r"(\d+)\s*-\s*(\d+)").unwrap();
 
     for group in groups {
@@ -41,16 +35,12 @@ pub fn parse_portlist(ref plist_str: &str) -> Result<Vec<u16>> {
     }
 
     let mut plist_vec = plist.into_iter().collect::<Vec<u16>>();
-    plist_vec.sort();
+    plist_vec.sort_unstable();
     Ok(plist_vec)
 }
 
 pub fn tcp_ping(ip: Ipv4Addr) -> PingResult {
     tcp_scan_port(&ip, TCP_PING_PORT)
-}
-
-pub fn tcp_scan_portlist(ip: &Ipv4Addr, ports: &[u16]) -> Vec<PingResult> {
-    ports.iter().map(|&port| tcp_scan_port(ip, port)).collect()
 }
 
 pub fn tcp_scan_port(ip: &Ipv4Addr, port: u16) -> PingResult {

@@ -81,7 +81,8 @@ impl Reducer<AppAction> for AppReducer {
 
             AppAction::SetModal(modal) => {
                 if modal.is_none() {
-                    state.selected_host = None
+                    state.selected_host = None;
+                    state.modal_state = None
                 }
                 state.modal = modal;
                 state
@@ -135,12 +136,9 @@ impl Reducer<AppAction> for AppReducer {
                             _ => {}
                         }
 
-                        match parse_portlist(&modal_state.port_query) {
-                            Ok(ports) => {
-                                // TODO: performance evaluation
-                                modal_state.ports = ports.iter().map(|p| (*p, None)).collect();
-                            },
-                            Err(_) => {}
+                        if let Ok(ports) =  parse_portlist(&modal_state.port_query) {
+                            // TODO: performance evaluation
+                            modal_state.ports = ports.iter().map(|p| (*p, None)).collect();
                         }
 
                         state.modal_state = Some(modal_state);
@@ -152,13 +150,10 @@ impl Reducer<AppAction> for AppReducer {
                             modal_state.ports[idx] = res;
 
                             // Add to active TCP ports
-                            match res.1 {
-                                Some(Ok(_)) => {
-                                    if let Some(idx) = state.hosts.iter().position(|h| h.ip == modal_state.selected_host.ip) {
-                                        state.hosts[idx].tcp_ports.push(res.0)
-                                    }
-                                },
-                                _ => {}
+                            if let Some(Ok(_)) = res.1 {
+                                if let Some(idx) = state.hosts.iter().position(|h| h.ip == modal_state.selected_host.ip) {
+                                    state.hosts[idx].tcp_ports.push(res.0)
+                                }
                             }
                         }
 

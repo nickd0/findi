@@ -16,23 +16,6 @@ pub struct TabsState {
     pub index: usize,
 }
 
-impl TabsState {
-    pub fn new(titles: Vec<String>) -> TabsState {
-        TabsState { titles, index: 0 }
-    }
-    pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.titles.len();
-    }
-
-    pub fn previous(&mut self) {
-        if self.index > 0 {
-            self.index -= 1;
-        } else {
-            self.index = self.titles.len() - 1;
-        }
-    }
-}
-
 pub type TcpPortScanResult = (u16, Option<Result<Duration, ()>>);
 
 #[derive(Clone, Debug)]
@@ -41,7 +24,8 @@ pub struct HostModalState {
     pub selected_host: Host,
     pub port_query: String,
     pub selected_component: usize,
-    pub ports: Vec<TcpPortScanResult>
+    pub ports: Vec<TcpPortScanResult>,
+    pub port_query_run: bool
 }
 
 impl HostModalState {
@@ -54,7 +38,8 @@ impl HostModalState {
             selected_host: host,
             port_query: String::new(),
             selected_component: 0,
-            ports: Vec::new()
+            ports: Vec::new(),
+            port_query_run: false
         }
     }
 }

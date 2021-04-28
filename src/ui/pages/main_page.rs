@@ -13,12 +13,11 @@ use crate::ui::{
     notification::{Notification, NotificationLevel},
     components::search_filter::{draw_search_filter, SearchFilterOption}
 };
-use crate::ui::modal::{Modal, ModalType, ModalOpt};
+use crate::ui::modal::{Modal, ModalType};
 use crate::state::actions::AppAction;
 use crate::network::{
     input_parse,
-    init_host_search,
-    host::{PingType, Host}
+    host::Host
 };
 use crate::ui::{
     pages::PageContent
@@ -256,7 +255,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 
 // Page events handler
 // TODO: use keycode or key event here?
-pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: SharedAppStateStore) {
+pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppStateStore) {
     // let mut store = store.lock().unwrap();
     match store.state.curr_focus {
         PageContent::HostTable => {
@@ -399,38 +398,19 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     store.dispatch(AppAction::SetInputErr(parsed.is_err()));
                     // Check if modal is visible and YES is selected, then parse and send hosts
                     match parsed {
-                        Ok(hosts) => {
-                            if let Some(modal) = &store.state.modal {
-                                // Modal already displayed
-
-                                if let ModalOpt::Yes = modal.selected {
-                                    store.dispatches(vec![
-                                        AppAction::SetHostSearchRun(false),
-                                        AppAction::SetModal(None),
-                                        AppAction::BuildHosts(hosts),
-                                        AppAction::ShiftFocus(PageContent::HostTable)
-                                    ]);
-                                    // TODO: Should this be done from some sort of Thunk action?
-                                    // Problem is that the store is wrapped in a mutex currently
-                                    // and so does not have access to a thread-safe reference
-                                    init_host_search(store_mtx)
-                                }
+                        Ok(_) => {
+                            let mut msg = String::from("Are you sure you want to start a new query?");
+                            if store.state.query_state {
+                                msg.push_str(" This will discard the current results.")
                             } else {
-                                // No modal
-
-                                let mut msg = String::from("Are you sure you want to start a new query?");
-                                if store.state.query_state {
-                                    msg.push_str(" This will discard the current results.")
-                                } else {
-                                    msg.push_str(" This will kill the current query.")
-                                }
-                                let modal = Modal::new(
-                                    "Confirm",
-                                    &msg,
-                                    ModalType::YesNo
-                                );
-                                store.dispatch(AppAction::SetModal(Some(modal)))
+                                msg.push_str(" This will kill the current query.")
                             }
+                            let modal = Modal::new(
+                                "Confirm",
+                                &msg,
+                                ModalType::YesNo
+                            );
+                            store.dispatch(AppAction::SetModal(Some(modal)))
                         },
                         
                         Err(err) => {

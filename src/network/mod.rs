@@ -116,7 +116,9 @@ pub fn dispatch_port_scan(store: SharedAppStateStore) {
         drop(lstore);
 
         for (port, _) in modal_state.ports {
-            if !GLOBAL_RUN.load(Ordering::Acquire) {
+            let port_run = !store.lock().unwrap().state.modal_state.is_some();
+
+            if !GLOBAL_RUN.load(Ordering::Acquire) || port_run {
                 break
             }
 
@@ -124,6 +126,8 @@ pub fn dispatch_port_scan(store: SharedAppStateStore) {
                 Ok(dur) => store.lock().unwrap().dispatch(AppAction::SetModalAction(HostModalAction::SetPortScanResult((port, Some(Ok(dur)))))),
                 Err(_) => store.lock().unwrap().dispatch(AppAction::SetModalAction(HostModalAction::SetPortScanResult((port, Some(Err(())))))),
             }
+
+            thread::sleep(Duration::from_millis(10));
         }
     });
 }

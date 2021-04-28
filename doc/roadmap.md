@@ -32,7 +32,7 @@ Roadmap
 - [ ] Use terminal tick like in https://github.com/fdehau/tui-rs/blob/master/examples/crossterm_demo.rs
 - [ ] Query-wide TCP port scan results
 - [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
-- [ ] Individual result overview popup modal
+- [x] Individual result overview popup modal
   - [ ] Additional TCP port scans of individual entry
   - Branch result_func
 - [ ] Filter results by hostname
@@ -40,7 +40,9 @@ Roadmap
 - [ ] Routing, Page system
 - [ ] Keyboard shortcuts and help menu
 - [ ] Query by interface rather than only CIDR
+- [ ] Default port scan option/filtering
 - [ ] Stdout only option with no UI
+  - Options parser with Clap
 - [ ] Help menu with keyboard shortcuts
 
 ## v0.3.0

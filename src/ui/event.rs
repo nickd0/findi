@@ -148,16 +148,13 @@ pub struct EventReader {
 pub fn async_event_reader() -> EventReader {
     let (tx, rx) = mpsc::channel();
 
-    let evt_tx = tx.clone();
+    let evt_tx = tx;
     thread::spawn(move || {
         loop {
             if poll(Duration::from_millis(POLL_INTERVAL)).unwrap() {
                 let evt = read().unwrap();
-                match evt {
-                    event::Event::Key(kevt) => {
-                        evt_tx.send(Key::from(kevt)).unwrap();
-                    },
-                    _ => {}
+                if let event::Event::Key(kevt) = evt {
+                    evt_tx.send(Key::from(kevt)).unwrap();
                 }
             }
         }

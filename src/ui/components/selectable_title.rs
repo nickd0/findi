@@ -1,9 +1,9 @@
 use tui::{
     text::{Span, Spans},
-    style::{Style, Modifier, Color}
+    style::{Style, Modifier}
 };
 
-pub fn selectable_title<'a>(title: &'a str, selected_style: Style) -> Spans<'a> {
+pub fn selectable_title(title: &str, selected_style: Style) -> Spans {
     let (first, rest) = title.split_at(1);
     Spans::from(vec![
         Span::styled(first, Style::default().add_modifier(Modifier::UNDERLINED)),
