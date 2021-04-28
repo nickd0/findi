@@ -6,24 +6,24 @@ use tui::{
     widgets::{Block, Borders, Cell, Row, TableState, Table, Paragraph, Gauge},
     Frame,
 };
+use clipboard::{ClipboardProvider, ClipboardContext};
 
 use crate::state::store::{SharedAppStateStore, AppStateStore};
 use crate::ui::{
     notification::{Notification, NotificationLevel},
     components::search_filter::{draw_search_filter, SearchFilterOption}
 };
-use crate::ui::modal::{Modal, ModalType, ModalOpt};
+use crate::ui::modal::{Modal, ModalType};
 use crate::state::actions::AppAction;
 use crate::network::{
     input_parse,
-    init_host_search,
-    host::{PingType, Host, HostVec}
+    host::Host
 };
 use crate::ui::{
     pages::PageContent
 };
 
-use termion::event::{Key};
+use crate::ui::event::Key;
 
 const JUMP_LEN: usize = 20;
 
@@ -192,7 +192,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         .height(1)
         .bottom_margin(1);
     
-    let rows = get_selected_hosts(&lstore.state.hosts, &lstore.state.search_filter_opt).map(|host| {
+    let rows = lstore.state.filtered_hosts().map(|host| {
         let mut style = Style::default();
         let mut status_cell = Cell::from("?");
         if let Some(dur) = host.ping_res {
@@ -206,21 +206,19 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         if let Some(ping_type) = host.ping_type {
             ping_cell = Cell::from(ping_type.to_string());
 
-            if let PingType::TCP = ping_type {
-                port_cell = Cell::from(
-                    host.tcp_ports.iter()
-                        .map(|p| p.to_string())
-                        .collect::<Vec<String>>()
-                        .join(",")
-                )
-            }
+            port_cell = Cell::from(
+                host.tcp_ports.iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            );
         }
 
         if let Some(host_name) = &host.host_name {
             match host_name {
                 Ok(hn) => {
-                style = style.fg(Color::Green);
-                host_cell = Cell::from(hn.to_string())
+                    style = style.fg(Color::Green);
+                    host_cell = Cell::from(hn.to_string())
                 },
                 Err(_) => host_cell = Cell::from("x")
             }
@@ -256,21 +254,22 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 }
 
 // Page events handler
-pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: SharedAppStateStore) {
+// TODO: use keycode or key event here?
+pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppStateStore) {
     // let mut store = store.lock().unwrap();
     match store.state.curr_focus {
         PageContent::HostTable => {
-            let s_hosts: Vec<&Host> = get_selected_hosts(&store.state.hosts, &store.state.search_filter_opt).collect();
+            let s_hosts: Vec<&Host> = store.state.filtered_hosts().collect();
             let s_table = StatefulTable::new(&store.state.table_state, &s_hosts);
             if let Some(table_idx) = match key {
                 // Char inputs
                 Key::Down | Key::Char('j') => s_table.next(),
                 Key::Up | Key::Char('k') => s_table.prev(),
-                Key::Char(' ') | Key::Char('J') | Key::PageDown => s_table.pgdn(),
-                Key::Ctrl(' ') | Key::Char('K') | Key::PageUp => s_table.pgup(),
+                Key::Char(' ') | Key::Shift('J') | Key::PageDown => s_table.pgdn(),
+                Key::Ctrl(' ') | Key::Shift('K') | Key::PageUp => s_table.pgup(),
 
                 // Focus shift
-                Key::Char('\t') => {
+                Key::Tab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
                     }
@@ -283,6 +282,51 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     None
                 },
 
+                // Host drill down
+                Key::Enter => {
+                    if let Some(idx) = store.state.table_state.selected() {
+                        store.dispatch(AppAction::SetSelectedHost(Some(idx)));
+                    }
+                    None
+                },
+
+                // Copy host IP to clipboard
+                Key::Char('c') | Key::Shift('C') => {
+
+                    if let Some(host_idx) = store.state.table_state.selected() {
+                        let mut res_str = String::new();
+                        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+                        let hosts: Vec<&Host> = store.state.filtered_hosts().collect();
+
+                        match key {
+                            Key::Char('c') => {
+                                let host_ip = hosts[host_idx].ip;
+                                res_str = format!("Address {} copied to clipboard", host_ip.to_string());
+                                ctx.set_contents(host_ip.to_string()).unwrap();
+                            },
+                            Key::Shift('C') => {
+                                if let Some(Ok(hostname)) = hosts[host_idx].host_name.as_ref() {
+                                    res_str = format!("Hostname {} copied to clipboard", hostname.to_owned());
+                                    ctx.set_contents(hostname.to_owned()).unwrap();
+                                }
+                            },
+                            _ => {}
+                        }
+
+                        if !res_str.is_empty() {
+                            store.dispatch(AppAction::SetNotification(
+                                Some(Notification::new(
+                                    "Status",
+                                    &res_str,
+                                    NotificationLevel::Info
+                                ))
+                            ));
+                        }
+                    }
+
+                    None
+                }
+
                 _ => None
             } {
                 store.dispatch(AppAction::TableSelect(Some(table_idx)))
@@ -292,7 +336,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
         PageContent::SearchFilters => {
             match key {
                 // TODO: Don't love is_none check, but do love that events bubble through the UI
-                Key::Char('\t') => {
+                Key::Tab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
                     }
@@ -304,7 +348,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     }
                 },
 
-                Key::Down | Key::Up | Key::Char(' ') => {
+                Key::Left | Key::Right | Key::Char(' ') => {
                     match store.state.search_filter_opt {
                         SearchFilterOption::ShowFound => store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowAll)),
                         SearchFilterOption::ShowAll => {
@@ -315,7 +359,12 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                             ]);
                         },
                     }
-                }
+                },
+
+                Key::Down => {
+                    store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
+                },
+
                 _ => {}
             }
         }
@@ -323,7 +372,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
         PageContent::QueryInput => {
             match key {
                 // TODO: Don't love is_none check, but do live that events bubble through the UI
-                Key::Char('\t') => {
+                Key::Tab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters))
                     }
@@ -344,43 +393,24 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
                     }
                 },
 
-                Key::Char('\n') => {
+                Key::Enter => {
                     let parsed = input_parse(&store.state.query);
                     store.dispatch(AppAction::SetInputErr(parsed.is_err()));
                     // Check if modal is visible and YES is selected, then parse and send hosts
                     match parsed {
-                        Ok(hosts) => {
-                            if let Some(modal) = &store.state.modal {
-                                // Modal already displayed
-
-                                if let ModalOpt::Yes = modal.selected {
-                                    store.dispatches(vec![
-                                        AppAction::SetHostSearchRun(false),
-                                        AppAction::SetModal(None),
-                                        AppAction::BuildHosts(hosts),
-                                        AppAction::ShiftFocus(PageContent::HostTable)
-                                    ]);
-                                    // TODO: Should this be done from some sort of Thunk action?
-                                    // Problem is that the store is wrapped in a mutex currently
-                                    // and so does not have access to a thread-safe reference
-                                    init_host_search(store_mtx)
-                                }
+                        Ok(_) => {
+                            let mut msg = String::from("Are you sure you want to start a new query?");
+                            if store.state.query_state {
+                                msg.push_str(" This will discard the current results.")
                             } else {
-                                // No modal
-
-                                let mut msg = String::from("Are you sure you want to start a new query?");
-                                if store.state.query_state {
-                                    msg.push_str(" This will discard the current results.")
-                                } else {
-                                    msg.push_str(" This will kill the current query.")
-                                }
-                                let modal = Modal::new(
-                                    "Confirm",
-                                    &msg,
-                                    ModalType::YesNo
-                                );
-                                store.dispatch(AppAction::SetModal(Some(modal)))
+                                msg.push_str(" This will kill the current query.")
                             }
+                            let modal = Modal::new(
+                                "Confirm",
+                                &msg,
+                                ModalType::YesNo
+                            );
+                            store.dispatch(AppAction::SetModal(Some(modal)))
                         },
                         
                         Err(err) => {
@@ -411,17 +441,6 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, store_mtx: Sh
     }
 }
 
-#[allow(clippy::ptr_arg)]
-fn get_selected_hosts<'a>(hosts: &'a HostVec, search_opt: &'a SearchFilterOption) -> impl Iterator<Item = &'a Host> {
-    hosts.iter().filter(move |&h| {
-        if matches!(search_opt, SearchFilterOption::ShowFound) {
-            h.ping_res.is_some() || h.host_name.as_ref().unwrap_or(&Err(String::new())).is_ok()
-        } else {
-            true
-        }
-    })
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -440,8 +459,8 @@ mod test {
             (Key::Char('j'), 2),
             (Key::Up, 1),
             (Key::Char('k'), 0),
-            (Key::Char('J'), 20),
-            (Key::Char('K'), 0),
+            (Key::Shift('J'), 20),
+            (Key::Shift('K'), 0),
             (Key::Char(' '), 20),
         ];
 
@@ -454,8 +473,8 @@ mod test {
     #[test]
     fn test_main_page_focus_shift() {
         let events: [(Key, PageContent); 4] = [
-            (Key::Char('\t'), PageContent::QueryInput),
-            (Key::Char('\t'), PageContent::SearchFilters),
+            (Key::Tab, PageContent::QueryInput),
+            (Key::Tab, PageContent::SearchFilters),
             (Key::BackTab, PageContent::QueryInput),
             (Key::BackTab, PageContent::HostTable),
         ];
@@ -471,7 +490,7 @@ mod test {
         // When a modal is active, tab does not shift focus
 
         let events: [(Key, PageContent); 3] = [
-            (Key::Char('\t'), PageContent::HostTable),
+            (Key::Tab, PageContent::HostTable),
             (Key::BackTab, PageContent::HostTable),
             (Key::BackTab, PageContent::HostTable),
         ];
@@ -512,7 +531,7 @@ mod test {
 
         let events: [(Key, String); 1] = [
             // FIXME: test too rigid
-            (Key::Char('\n'), "Are you sure you want to start a new query? This will kill the current query.".to_owned()),
+            (Key::Enter, "Are you sure you want to start a new query? This will kill the current query.".to_owned()),
         ];
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
@@ -528,7 +547,7 @@ mod test {
         store.state.curr_focus = PageContent::QueryInput;
 
         let events: [(Key, bool); 1] = [
-            (Key::Char('\n'), true),
+            (Key::Enter, true),
         ];
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
@@ -543,7 +562,7 @@ mod test {
         store.state.curr_focus = PageContent::QueryInput;
 
         let events: [(Key, bool); 1] = [
-            (Key::Char('\n'), true),
+            (Key::Enter, true),
         ];
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
@@ -558,13 +577,53 @@ mod test {
         let events: [(Key, Option<usize>); 5] = [
             (Key::Char(' '), Some(0)),
             (Key::Char(' '), Some(20)),
-            (Key::Char('\t'), Some(20)),
-            (Key::Char('\t'), Some(20)),
+            (Key::Tab, Some(20)),
+            (Key::Tab, Some(20)),
             (Key::Char(' '), None),
         ];
 
         main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
             state.table_state.selected()
+        });
+    }
+
+
+    #[test]
+    fn test_main_page_filters_navigate() {
+        let mut store = AppStateStore::new();
+
+        store.state.curr_focus = PageContent::SearchFilters;
+        let events: [(Key, (SearchFilterOption, PageContent)); 3] = [
+            (Key::Left, (SearchFilterOption::ShowFound, PageContent::SearchFilters)),
+            (Key::Left, (SearchFilterOption::ShowAll, PageContent::SearchFilters)),
+            (Key::Down, (SearchFilterOption::ShowAll, PageContent::HostTable)),
+        ];
+
+        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            (state.search_filter_opt, state.curr_focus)
+        });
+    }
+
+    #[test]
+    fn test_main_page_copy_ip() {
+        let mut store = AppStateStore::new();
+
+        let mut resolved_host = Host::new(Ipv4Addr::new(10, 0, 1, 0));
+        resolved_host.host_name = Some(Ok("foobar.local".to_owned()));
+        store.state.hosts.push(resolved_host);
+
+        let events: [(Key, Option<String>); 3] = [
+            (Key::Char('j'), None),
+            (Key::Char('c'), Some("Address 10.0.1.0 copied to clipboard".to_owned())),
+            (Key::Shift('C'), Some("Hostname foobar.local copied to clipboard".to_owned())),
+        ];
+
+        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            if let Some(notif) = state.notification.as_ref() {
+                Some(notif.message.to_owned())
+            } else {
+                None
+            }
         });
     }
 

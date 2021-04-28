@@ -12,7 +12,7 @@ use super::styles::border_style;
 use crate::state::store::AppStateStore;
 use crate::ui::pages::PageContent;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum SearchFilterOption {
     ShowAll,
     ShowFound

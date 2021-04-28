@@ -27,21 +27,28 @@ Roadmap
   - [relevant r/rust comment](https://www.reddit.com/r/rust/comments/8mbtdt/how_do_i_more_neatly_handle_multiple_different/dznl8o7?utm_source=share&utm_medium=web2x&context=3)
 
 ## v0.2.0
-- [ ] Use [crossterm](https://crates.io/crates/crossterm) backend
+- [x] Use [crossterm](https://crates.io/crates/crossterm) backend
+  - branch `crossterm`
+- [ ] Use terminal tick like in https://github.com/fdehau/tui-rs/blob/master/examples/crossterm_demo.rs
 - [ ] Query-wide TCP port scan results
 - [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
-- [ ] Individual result overview popup modal
+- [x] Individual result overview popup modal
+  - [ ] Additional TCP port scans of individual entry
+  - Branch result_func
 - [ ] Filter results by hostname
-- [ ] Additional TCP port scans of individual entry
-- [ ] Clipboard copy functionality
+- [x] Clipboard copy functionality
 - [ ] Routing, Page system
 - [ ] Keyboard shortcuts and help menu
 - [ ] Query by interface rather than only CIDR
+- [ ] Default port scan option/filtering
 - [ ] Stdout only option with no UI
+  - Options parser with Clap
+- [ ] Help menu with keyboard shortcuts
 
 ## v0.3.0
 - [ ] User settings for scan type, wait times, thread pool size, UI skins! (`CONFIG`)
 - [ ] Menu bar
+- [ ] Mouse event support
 - [ ] Service search: Multicast DNS to discover available services on the network (airplay, spotify connect, etc)
 - [ ] Carmen/traceroute integration for non-private queries
 - [ ] IPv6 support?
