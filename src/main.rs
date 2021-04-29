@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicBool};
 
 use pnet::ipnetwork::IpNetwork;
 use pnet::datalink;
-use clap::{App, Arg, ArgMatches};
+use clap::{App, Arg, ArgMatches, crate_version, crate_authors};
 use colored::Colorize;
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
@@ -42,8 +42,8 @@ fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
 
 fn parse_args<'a>() -> ArgMatches<'a> {
     App::new("findi")
-        .version("0.1.0")
-        .author("Nick Donald <nickjdonald@gmail.com>")
+        .version(crate_version!())
+        .author(crate_authors!())
         .about("A local network discovery tool")
 
         .arg(Arg::with_name("disable_ui")
@@ -55,6 +55,12 @@ fn parse_args<'a>() -> ArgMatches<'a> {
             .short("c")
             .long("cidr")
             .help("Network host query in CIDR notation")
+            .takes_value(true))
+
+        .arg(Arg::with_name("output_file")
+            .short("o")
+            .long("output")
+            .help("Output file location with extension (csv|json|txt)")
             .takes_value(true))
 
         .get_matches()
@@ -100,6 +106,8 @@ fn main() {
         exit(1);
     }
 
+    let num_hosts = hosts.len();
+
     store.dispatch(AppAction::BuildHosts(hosts));
     store.dispatch(AppAction::SetQuery(query));
     store.dispatch(AppAction::SetHostSearchRun(true));
@@ -120,6 +128,9 @@ fn main() {
 
         let lstore = shared_store.clone();
         let mut hostidx: usize = 0;
+
+        println!("Scanning {} hosts...", num_hosts);
+
         loop {
             let hstore = lstore.lock().unwrap();
             if hostidx >= hstore.state.hosts.len() {
@@ -132,7 +143,14 @@ fn main() {
                     println!(
                         "Live host {} {}",
 
-                        format!("{:<28}", format!("{:?} ({:.2?}ms)", host.ip, dur.as_millis())),
+                        format!(
+                            "{:<28}",
+
+                            format!(
+                                "{:<15?} ({:.2?}ms)",
+                                host.ip, dur.as_millis()
+                            )
+                        ),
                         match &host.host_name {
                             Some(Ok(hostname)) => hostname.green(),
                             _ => "--".red()
