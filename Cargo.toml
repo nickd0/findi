@@ -42,4 +42,3 @@ test = false
 bench = false
 path = "src/main.rs"
 name = "findi"
-
