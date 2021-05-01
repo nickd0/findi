@@ -22,6 +22,16 @@ pub struct Notification {
     pub level: NotificationLevel
 }
 
+impl Default for Notification {
+    fn default() -> Self {
+        Notification {
+            title: "Status".to_owned(),
+            message: String::default(),
+            level: NotificationLevel::Info
+        }
+    }
+}
+
 impl Notification {
     pub fn info(title: &str, message: &str) -> Self {
         Self {
