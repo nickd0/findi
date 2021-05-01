@@ -11,15 +11,15 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-    - name: Build
-      run: cargo build --verbose --release --all-features
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install Deps
+        run: sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+      - name: Build
+        run: cargo build --verbose --release --all-features
+      - name: Run tests
+        run: cargo test --verbose
