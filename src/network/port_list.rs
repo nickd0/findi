@@ -5756,5 +5756,5 @@ lazy_static! {
 }
 
 pub fn get_port_desc(port: &u16) -> &'static str {
-    return PORT_LIST.get(port).unwrap_or(&"")
+    PORT_LIST.get(port).unwrap_or(&"")
 }

@@ -295,7 +295,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
 
                     if let Some(host_idx) = store.state.table_state.selected() {
                         let mut notif = Notification::default();
-                        let mut ctx: Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
+                        let ctx: Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
 
                         if ctx.is_ok() {
                             let hosts: Vec<&Host> = store.state.filtered_hosts().collect();
