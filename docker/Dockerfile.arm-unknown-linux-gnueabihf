@@ -1,0 +1,12 @@
+FROM rustembedded/cross:arm-unknown-linux-gnueabihf-0.2.1
+
+# Deps for XCB/X11 clipboard
+RUN apt-get update && \
+  dpkg --add-architecture armhf && \
+  apt-get update && \
+  apt-get install -y \ 
+    python3 \
+    libxcb1-dev:armhf \
+    libxcb-render0-dev:armhf \
+    libxcb-shape0-dev:armhf \
+    libxcb-xfixes0-dev:armhf
