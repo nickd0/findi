@@ -118,7 +118,7 @@ fn main() {
 
     #[cfg(feature = "ui")]
     if !matches.is_present("disable_ui") {
-        let ui_thread = start_ui(shared_store.clone());
+        let ui_thread = start_ui(shared_store);
 
 
         let _ = ui_thread.join();
@@ -126,7 +126,7 @@ fn main() {
         // TODO: move this elsewhere and accept an argument for different types out output
         // ie stdout, csv, json, etc
 
-        let lstore = shared_store.clone();
+        let lstore = shared_store;
         let mut hostidx: usize = 0;
 
         println!("Scanning {} hosts...", num_hosts);
