@@ -26,6 +26,8 @@ use crate::ui::{
     pages::PageContent
 };
 
+use std::convert::TryInto;
+
 use crate::ui::event::Key;
 
 const JUMP_LEN: usize = 20;
@@ -391,15 +393,26 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                 },
 
                 // Filter list includes show all, show resolved, and show each requested TCP port open
+                // TODO: revisit this logic, its a little tangled
                 Key::Left | Key::Right | Key::Char(' ') => {
                     match store.state.search_filter_opt {
-                        SearchFilterOption::ShowAll => store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowFound)),
+                        SearchFilterOption::ShowAll => {
+                            if store.state.port_query.len() > 0 && matches!(key, Key::Left) {
+                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::HasPort(store.state.port_query.len() - 1)))
+                            } else {
+                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowFound))
+                            }
+                        },
                         SearchFilterOption::ShowFound => {
                             // Reset table select index on filter
-                            if store.state.port_query.len() > 0 {
+                            if store.state.port_query.len() > 0 && matches!(key, Key::Right) {
+                                let mut idx = 0;
+                                if matches!(key, Key::Left) {
+                                    idx = store.state.port_query.len() - 1
+                                }
                                 store.dispatches(vec![
                                     AppAction::TableSelect(None),
-                                    AppAction::SetSearchFilter(SearchFilterOption::HasPort(0))
+                                    AppAction::SetSearchFilter(SearchFilterOption::HasPort(idx))
                                 ]);
                             } else {
                                 store.dispatches(vec![
@@ -409,10 +422,22 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                             }
                         },
                         SearchFilterOption::HasPort(idx) => {
-                            if idx + 1 < store.state.port_query.len() {
-                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::HasPort(idx + 1)))
-                            } else {
+                            let iidx: isize = idx.try_into().unwrap();
+
+                            let nxt = match key {
+                                Key::Left => iidx - 1,
+                                Key::Right | Key::Char(' ') => iidx + 1,
+                                _ => 0
+                            };
+
+                            let iport_len = store.state.port_query.len().try_into().unwrap();
+
+                            if nxt < iport_len && nxt > 0 {
+                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::HasPort(nxt.try_into().unwrap())))
+                            } else if nxt >= iport_len {
                                 store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowAll))
+                            } else {
+                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowFound))
                             }
                         }
                     }
