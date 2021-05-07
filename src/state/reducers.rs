@@ -40,6 +40,19 @@ impl Reducer<AppAction> for AppReducer {
                 state
             },
 
+            AppAction::SetPortQuery(pquery) => {
+                match pquery {
+                    Some(somepq) => {
+                        match parse_portlist(&somepq) {
+                            Ok(ports) => state.port_query = ports,
+                            Err(_) => {}
+                        }
+                    },
+                    None => state.port_query.clear()
+                }
+                state
+            },
+
             AppAction::SetInputErr(err) => {
                 state.input_err = err;
                 state
@@ -152,7 +165,7 @@ impl Reducer<AppAction> for AppReducer {
                             // Add to active TCP ports
                             if let Some(Ok(_)) = res.1 {
                                 if let Some(idx) = state.hosts.iter().position(|h| h.ip == modal_state.selected_host.ip) {
-                                    state.hosts[idx].tcp_ports.push(res.0)
+                                    state.hosts[idx].tcp_ports.insert(res.0);
                                 }
                             }
                         }
@@ -192,6 +205,15 @@ mod test {
         let new_state = test_helper_reduce_state(action, None);
 
         assert_eq!(new_state.hosts[0], host)
+    }
+
+    #[test]
+    fn test_action_set_port_query() {
+        let port_q = "10-12";
+        let action = AppAction::SetPortQuery(Some(port_q.to_owned()));
+        let new_state = test_helper_reduce_state(action, None);
+
+        assert_eq!(new_state.port_query, vec![10,11,12]);
     }
 
     #[test]

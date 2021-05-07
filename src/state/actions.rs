@@ -20,6 +20,7 @@ pub enum AppAction {
     UpdatePingResult(Ipv4Addr, PingResult),
     UpdateHost(Host),
     SetQuery(String),
+    SetPortQuery(Option<String>),
     SetInputErr(bool),
     SetHostSearchRun(bool),
     NewQuery(Vec<Ipv4Addr>),

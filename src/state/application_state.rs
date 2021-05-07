@@ -15,6 +15,7 @@ use crate::state::host_modal_state::HostModalState;
 pub struct ApplicationState {
     pub hosts: HostVec,
     pub query: String,
+    pub port_query: Vec<u16>,
     pub query_state: bool,
     pub input_err: bool,
     pub search_run: bool,
@@ -42,10 +43,14 @@ impl ApplicationState {
 
     pub fn filtered_hosts(&self) -> impl Iterator<Item = &Host> {
         self.hosts.iter().filter(move |&h| {
-            if matches!(self.search_filter_opt, SearchFilterOption::ShowFound) {
-                h.ping_res.is_some() || h.host_name.as_ref().unwrap_or(&Err(String::new())).is_ok()
-            } else {
-                true
+            match self.search_filter_opt {
+                SearchFilterOption::ShowFound => {
+                    h.ping_res.is_some() || h.host_name.as_ref().unwrap_or(&Err(String::new())).is_ok()
+                },
+                SearchFilterOption::ShowAll => true,
+                SearchFilterOption::HasPort(idx) => {
+                    h.tcp_ports.contains(&self.port_query[idx])
+                }
             }
         })
     }

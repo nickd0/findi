@@ -18,7 +18,8 @@ use crate::ui::{
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum SearchFilterOption {
     ShowAll,
-    ShowFound
+    ShowFound,
+    HasPort(usize)
 }
 
 impl Default for SearchFilterOption {
@@ -29,8 +30,9 @@ impl Default for SearchFilterOption {
 
 pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut Frame<B>) {
     let filter_str = match store.state.search_filter_opt {
-        SearchFilterOption::ShowAll => "Show all",
-        SearchFilterOption::ShowFound => "Show resolved only",
+        SearchFilterOption::ShowAll => "Show all".to_owned(),
+        SearchFilterOption::ShowFound => "Show resolved only".to_owned(),
+        SearchFilterOption::HasPort(idx) => format!("Port {} open", store.state.port_query[idx])
     };
 
     let filter_style = Style::default().fg(Color::Green);

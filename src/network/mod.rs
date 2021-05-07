@@ -12,7 +12,9 @@ use crate::state::{
 
 use crate::network::host::Host;
 use crate::config::AppConfig;
-use crate::state::actions::AppAction;
+use crate::state::{
+    actions::AppAction
+};
 use crate::GLOBAL_RUN;
 
 use std::time::Duration;
@@ -91,11 +93,24 @@ pub fn init_host_search(store: SharedAppStateStore) {
 
             let store_copy = store.clone();
             thread::sleep(Duration::from_millis(50));
+
             pool.execute(move || {
-                if !store_copy.lock().unwrap().state.search_run {
+                let localstore = store_copy.lock().unwrap();
+                let port_query = localstore.state.port_query.clone();
+                if !localstore.state.search_run {
                     return
                 }
-                let h = Host::host_ping(host.ip);
+                drop(localstore);
+
+                let mut h = Host::host_ping(host.ip);
+
+                for port in port_query {
+                    match tcp_ping::tcp_scan_port(&h.ip, port) {
+                        Ok(_) => { h.tcp_ports.insert(port); },
+                        Err(_) => {}
+                    }
+                }
+
                 store_copy.lock().unwrap().dispatch(AppAction::UpdateHost(h));
             });
 

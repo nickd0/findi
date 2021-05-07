@@ -57,6 +57,12 @@ fn parse_args<'a>() -> ArgMatches<'a> {
             .help("Network host query in CIDR notation")
             .takes_value(true))
 
+        .arg(Arg::with_name("scan_ports")
+            .short("p")
+            .long("tcpports")
+            .help("TCP port scan list/range (e.g. -p 22 or -p 22,443 or -p 80-90)")
+            .takes_value(true))
+
         .arg(Arg::with_name("output_file")
             .short("o")
             .long("output")
@@ -104,6 +110,12 @@ fn main() {
     } else {
         eprintln!("No input provided and could not find an available interface!");
         exit(1);
+    }
+
+    // Get port list from args, ignore a malformed port list
+    // TODO: constrain this to at most 10 ports?
+    if let Some(port_list) = matches.value_of("scan_ports") {
+        store.dispatch(AppAction::SetPortQuery(Some(port_list.to_owned())))
     }
 
     let num_hosts = hosts.len();

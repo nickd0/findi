@@ -40,7 +40,7 @@ Roadmap
 - [ ] Routing, Page system
 - [x] Keyboard shortcuts and help menu
 - [ ] Query by interface rather than only CIDR
-- [ ] Default port scan option/filtering
+- [x] Default port scan option/filtering
 - [x] Stdout only option with no UI
   - branch `cli_args`
   - Options parser with Clap

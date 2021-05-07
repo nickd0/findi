@@ -10,6 +10,7 @@ use anyhow::Result;
 
 use std::net::{Ipv4Addr};
 use std::fmt;
+use std::collections::HashSet;
 
 pub type HostVec = Vec<Host>;
 
@@ -48,7 +49,7 @@ pub struct Host {
     pub ip: Ipv4Addr,
     pub ping_res: PingResultOption,
     pub ping_type: Option<PingType>,
-    pub tcp_ports: Vec<u16>,
+    pub tcp_ports: HashSet<u16>,
     pub host_name: Option<Result<String, String>>,
     pub res_type: Option<HostResolutionType>,
     pub ping_done: bool
@@ -93,7 +94,7 @@ impl Host {
             ping_res: None,
             ping_type: None,
             host_name: None,
-            tcp_ports: vec![],
+            tcp_ports: HashSet::default(),
             ping_done: false,
             res_type: None
         }
@@ -110,7 +111,7 @@ impl Host {
                 match tcp_ping(self.ip) {
                     Ok(t) => {
                         self.ping_type = Some(PingType::TCP);
-                        self.tcp_ports.push(TCP_PING_PORT);
+                        self.tcp_ports.insert(TCP_PING_PORT);
                         Some(t)
                     },
                     Err(_) => None
