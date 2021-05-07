@@ -10,7 +10,10 @@ use tui::{
 use super::styles::border_style;
 
 use crate::state::store::AppStateStore;
-use crate::ui::pages::PageContent;
+use crate::ui::{
+    components::selectable_title::selectable_title,
+    pages::PageContent
+};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum SearchFilterOption {
@@ -45,7 +48,7 @@ pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut
                 _ => border_style(false)
             }
         )
-        .title("Filter/sort");
+        .title(selectable_title("Filter/sort", Style::default()));
 
     let filter_option = Paragraph::new(span)
         .alignment(Alignment::Center)

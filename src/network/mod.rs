@@ -37,10 +37,9 @@ pub fn input_parse(input: &str) -> Result<Vec<Ipv4Addr>> {
         }
 
         // Validate only private networks for now
-        // TODO: make this an option?
-        // if !ipn.network().is_private() {
-        //     return Err(anyhow!("Only private IP networks as defined in IETF RFC1918 can be scanned for now"))
-        // }
+        if !ipn.network().is_private() {
+            return Err(anyhow!("Only private IP networks as defined in IETF RFC1918 can be scanned for now"))
+        }
         Ok(ipn.iter().collect())
     } else {
         Err(anyhow!("Please provide a valid IPv4 CIDR network"))

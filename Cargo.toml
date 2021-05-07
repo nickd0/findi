@@ -29,7 +29,8 @@ clap = "2.33.3"
 
 [features]
 ui = []
-default = ["ui"]
+port_desc = []
+default = ["ui", "port_desc"]
 
 [[bin]]
 test = true

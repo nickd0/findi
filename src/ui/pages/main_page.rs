@@ -11,7 +11,10 @@ use clipboard::{ClipboardProvider, ClipboardContext};
 use crate::state::store::{SharedAppStateStore, AppStateStore};
 use crate::ui::{
     notification::{Notification, NotificationLevel},
-    components::search_filter::{draw_search_filter, SearchFilterOption}
+    components::{
+        search_filter::{draw_search_filter, SearchFilterOption},
+        selectable_title::selectable_title
+    }
 };
 use crate::ui::modal::{Modal, ModalType};
 use crate::state::actions::AppAction;
@@ -146,7 +149,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
                         _ => default_border_style
                     }
                 )
-                .title("Host search")
+                .title(selectable_title("Search", Style::default()))
         );
 
     f.render_widget(input, first_row[0]);
@@ -236,7 +239,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
             _ => default_border_style
           }
         )
-        .title("Hosts");
+        .title(selectable_title("Hosts", Style::default()));
 
     let t = Table::new(rows)
         .header(header)
@@ -257,6 +260,45 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 // TODO: use keycode or key event here?
 pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppStateStore) {
     // let mut store = store.lock().unwrap();
+
+    // Components selection shortcuts
+    match key {
+        Key::Char('h') => store.dispatch(AppAction::ShiftFocus(PageContent::HostTable)),
+        Key::Char('s') => store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput)),
+        Key::Char('f') => store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters)),
+        Key::Char('?') => {
+            let modal = Modal::new(
+                "Help",
+                "Keyboard shortcuts:\n\
+                - Press 'h' to go to hosts table\n\
+                - Press 's' to go to query search (return to begin query)\n\
+                - Press 'f' to go to query filter\n\
+                (Shortcuts are indicated by an underline character)\n\n\
+
+                Filter controls:\n\
+                - Use left/right arrows or space bar to cycle through filters\n\
+                - Use Down arrow to go back to host table\n\n\
+
+                Navigate the hosts table with arrows or similar to Vim: \n\
+                - To go down one list item use down arrow or 'j' key\n\
+                - To go up one list item use down arrow or 'k' key\n\
+                - Use shift with the 'j' or 'k' key (or Page Up/Page Down) to move 20 items\n\
+                - Use the space bar to jump 20 items down\n\
+                - Press enter to see more information on that host\n\n\
+
+                In the Host Info modal: \n\
+                - Press 't' to go to TCP Port scan\n\
+                - Press 'h' to go to host info
+                ",
+                ModalType::Ok
+            );
+            store.dispatch(AppAction::SetModal(Some(modal)))
+        }
+        _ => {}
+    }
+
+
+    // store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
     match store.state.curr_focus {
         PageContent::HostTable => {
             let s_hosts: Vec<&Host> = store.state.filtered_hosts().collect();

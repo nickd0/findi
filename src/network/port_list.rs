@@ -1,6 +1,9 @@
+#[cfg(feature = "port_desc")]
 use lazy_static::lazy_static;
+#[cfg(feature = "port_desc")]
 use std::collections::HashMap;
 
+#[cfg(feature = "port_desc")]
 lazy_static! {
     static ref PORT_LIST: HashMap<u16, &'static str> = {
         let mut map = HashMap::new();
@@ -5755,6 +5758,12 @@ lazy_static! {
     };
 }
 
+#[cfg(feature = "port_desc")]
 pub fn get_port_desc(port: &u16) -> &'static str {
     PORT_LIST.get(port).unwrap_or(&"")
+}
+
+#[cfg(not(feature = "port_desc"))]
+pub fn get_port_desc(_port: &u16) -> &'static str {
+    "--"
 }

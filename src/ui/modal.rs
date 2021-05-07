@@ -40,6 +40,7 @@ use tui::{
 #[derive(Clone)]
 pub enum ModalType {
     YesNo,
+    Ok,
     Custom
 }
 
@@ -111,7 +112,10 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 // TODO: draw specific modal types here
 pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
     let block = Block::default().title(modal.title).borders(Borders::ALL);
-    let area = centered_rect(40, 30, f.size());
+    let area = match modal.modal_type {
+        ModalType::YesNo | ModalType::Custom => centered_rect(40, 30, f.size()),
+        ModalType::Ok => centered_rect(40, 80, f.size()),
+    };
 
 
 
@@ -126,28 +130,52 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
         ModalOpt::No => no_style = no_style.fg(Color::Green)
     };
 
-    let span = Span::styled("Yes", yes_style);
+    let span = match modal.modal_type {
+        ModalType::YesNo | ModalType::Custom => Span::styled("Yes", yes_style),
+        ModalType::Ok => Span::styled("Ok", yes_style)
+    };
+
     let no_span = Span::styled("No", no_style);
 
     let yes_btn = Paragraph::new(span).alignment(Alignment::Center);
     let no_btn = Paragraph::new(no_span).alignment(Alignment::Center);
 
 
-    let msg_span = Spans::from(Span::from(modal.message));
-    let modal_text = Paragraph::new(msg_span)
+    let msg_spans: Vec<Spans> = modal.message.split("\n").map(|msgstr| {
+        Spans::from(msgstr)
+    }).collect();
+    // let msg_span = Spans::from(Span::from(modal.message));
+    // let msg_span = Spans::from(Span::from(modal.message));
+    let modal_text = Paragraph::new(msg_spans)
         .wrap(Wrap { trim: true });
     
-    let btn_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Percentage(60),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-            ]
-            .as_ref(),
-        )
-        .split(area);
+    let btn_layout = match modal.modal_type {
+        ModalType::YesNo | ModalType::Custom => {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(
+                    [
+                        Constraint::Percentage(60),
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(20),
+                    ]
+                    .as_ref(),
+                )
+                .split(area)
+        },
+        ModalType::Ok => {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(
+                    [
+                        Constraint::Percentage(80),
+                        Constraint::Percentage(20),
+                    ]
+                    .as_ref(),
+                )
+                .split(area)
+        }
+    };
 
     let btn_layout_x = Layout::default()
         .direction(Direction::Horizontal)
@@ -176,8 +204,11 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
         .split(btn_layout[0]);
 
     f.render_widget(modal_text, text_layout[1]);
-    f.render_widget(yes_btn, btn_layout_x[1]);
-    f.render_widget(no_btn, btn_layout_x[3]);
+
+    if let ModalType::YesNo = modal.modal_type {
+        f.render_widget(yes_btn, btn_layout_x[1]);
+        f.render_widget(no_btn, btn_layout_x[3]);
+    }
 }
 
 // TODO: consolidate modal drawing funcs
@@ -363,23 +394,30 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, lstore: SharedApp
             if store.state.modal_state.is_some() {
                 dispatch_port_scan(lstore)
             } else {
-                match store.state.modal.as_ref().unwrap().selected {
-                    ModalOpt::No => store.dispatch(AppAction::SetModal(None)),
+                match store.state.modal.as_ref().unwrap().modal_type {
+                    ModalType::YesNo => {
+                        match store.state.modal.as_ref().unwrap().selected {
+                            ModalOpt::No => store.dispatch(AppAction::SetModal(None)),
 
-                    ModalOpt::Yes => {
-                        let parsed = input_parse(&store.state.query);
-                        store.dispatches(vec![
-                            AppAction::SetHostSearchRun(false),
-                            AppAction::SetModal(None),
-                            AppAction::BuildHosts(parsed.unwrap()),
-                            AppAction::ShiftFocus(PageContent::HostTable)
-                        ]);
-                        // TODO: Should this be done from some sort of Thunk action?
-                        // Problem is that the store is wrapped in a mutex currently
-                        // and so does not have access to a thread-safe reference
-                        init_host_search(lstore)
+                            ModalOpt::Yes => {
+                                let parsed = input_parse(&store.state.query);
+                                store.dispatches(vec![
+                                    AppAction::SetHostSearchRun(false),
+                                    AppAction::SetModal(None),
+                                    AppAction::BuildHosts(parsed.unwrap()),
+                                    AppAction::ShiftFocus(PageContent::HostTable)
+                                ]);
+                                // TODO: Should this be done from some sort of Thunk action?
+                                // Problem is that the store is wrapped in a mutex currently
+                                // and so does not have access to a thread-safe reference
+                                init_host_search(lstore)
 
-                    }
+                            }
+                        }
+                    },
+                    ModalType::Ok => store.dispatch(AppAction::SetModal(None)),
+
+                    ModalType::Custom => {}
                 }
             }
 
@@ -450,7 +488,7 @@ mod test {
     }
     
     #[test]
-    fn test_modal_event_enter() {
+    fn test_modal_yesno_event_enter() {
         let mut store = AppStateStore::new();
 
         let events: [(Key, bool); 2] = [
@@ -459,6 +497,21 @@ mod test {
         ];
 
         store.state.modal = Some(Modal::new("Test modal", "This is a test", ModalType::YesNo));
+
+        page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
+            state.modal.is_some()
+        })
+    }
+
+    #[test]
+    fn test_modal_ok_event_enter() {
+        let mut store = AppStateStore::new();
+
+        let events: [(Key, bool); 1] = [
+            (Key::Enter, false),
+        ];
+
+        store.state.modal = Some(Modal::new("Test modal", "This is a test", ModalType::Ok));
 
         page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
             state.modal.is_some()

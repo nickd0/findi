@@ -38,13 +38,13 @@ Roadmap
 - [ ] Filter results by hostname
 - [x] Clipboard copy functionality
 - [ ] Routing, Page system
-- [ ] Keyboard shortcuts and help menu
+- [x] Keyboard shortcuts and help menu
 - [ ] Query by interface rather than only CIDR
 - [ ] Default port scan option/filtering
 - [x] Stdout only option with no UI
   - branch `cli_args`
   - Options parser with Clap
-- [ ] Help menu with keyboard shortcuts
+- [x] Help menu with keyboard shortcuts
 
 ## v0.3.0
 - [ ] User settings for scan type, wait times, thread pool size, UI skins! (`CONFIG`)
