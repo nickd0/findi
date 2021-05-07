@@ -33,7 +33,7 @@ Roadmap
 - [ ] Query-wide TCP port scan results
 - [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [x] Individual result overview popup modal
-  - [ ] Additional TCP port scans of individual entry
+  - [x] Additional TCP port scans of individual entry
   - Branch result_func
 - [ ] Filter results by hostname
 - [x] Clipboard copy functionality
@@ -41,7 +41,8 @@ Roadmap
 - [ ] Keyboard shortcuts and help menu
 - [ ] Query by interface rather than only CIDR
 - [ ] Default port scan option/filtering
-- [ ] Stdout only option with no UI
+- [x] Stdout only option with no UI
+  - branch `cli_args`
   - Options parser with Clap
 - [ ] Help menu with keyboard shortcuts
 

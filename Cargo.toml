@@ -1,6 +1,6 @@
 [package]
 name = "findi"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Nick Donald <nickjdonald@gmail.com>"]
 edition = "2018"
 default-run = "findi"
@@ -25,6 +25,7 @@ anyhow = "1.0"
 clipboard = "0.5.0"
 regex = "1.4.3"
 lazy_static = "1.4.0"
+clap = "2.33.3"
 
 [features]
 ui = []
@@ -41,4 +42,3 @@ test = false
 bench = false
 path = "src/main.rs"
 name = "findi"
-

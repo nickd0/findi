@@ -25,10 +25,11 @@ use std::process::exit;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool};
-use std::env;
 
 use pnet::ipnetwork::IpNetwork;
 use pnet::datalink;
+use clap::{App, Arg, ArgMatches, crate_version, crate_authors};
+use colored::Colorize;
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
 
@@ -39,7 +40,36 @@ fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
     })
 }
 
+fn parse_args<'a>() -> ArgMatches<'a> {
+    App::new("findi")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about("A local network discovery tool")
+
+        .arg(Arg::with_name("disable_ui")
+            .short("n")
+            .long("no-ui")
+            .help("Disable the TUI app"))
+
+        .arg(Arg::with_name("custom_cidr")
+            .short("c")
+            .long("cidr")
+            .help("Network host query in CIDR notation")
+            .takes_value(true))
+
+        .arg(Arg::with_name("output_file")
+            .short("o")
+            .long("output")
+            .help("Output file location with extension (csv|json|txt)")
+            .takes_value(true))
+
+        .get_matches()
+}
+
 fn main() {
+
+    let matches = parse_args();
+
     let interfaces = datalink::interfaces();
     let default_iface = interfaces
         .iter()
@@ -52,13 +82,13 @@ fn main() {
     let hosts: Vec<Ipv4Addr>;
     let query: String;
 
-    if let Some(input) = env::args().nth(1) {
+    if let Some(input) = matches.value_of("custom_cidr") {
         match input_parse(&input) {
             Ok(hs) => hosts = hs,
             Err(msg) => return println!("{}", msg)
         }
 
-        query = input;
+        query = input.to_owned();
 
     // } else if default_iface.is_some() {
     } else if let Some(default_if_some) = default_iface {
@@ -76,17 +106,59 @@ fn main() {
         exit(1);
     }
 
+    let num_hosts = hosts.len();
+
     store.dispatch(AppAction::BuildHosts(hosts));
     store.dispatch(AppAction::SetQuery(query));
     store.dispatch(AppAction::SetHostSearchRun(true));
 
     let shared_store = Arc::new(Mutex::new(store));
 
-    #[cfg(feature = "ui")]
-    let ui_thread = start_ui(shared_store.clone());
-
-    init_host_search(shared_store);
+    init_host_search(shared_store.clone());
 
     #[cfg(feature = "ui")]
-    let _ = ui_thread.join();
+    if !matches.is_present("disable_ui") {
+        let ui_thread = start_ui(shared_store);
+
+
+        let _ = ui_thread.join();
+    } else {
+        // TODO: move this elsewhere and accept an argument for different types out output
+        // ie stdout, csv, json, etc
+
+        let lstore = shared_store;
+        let mut hostidx: usize = 0;
+
+        println!("Scanning {} hosts...", num_hosts);
+
+        loop {
+            let hstore = lstore.lock().unwrap();
+            if hostidx >= hstore.state.hosts.len() {
+                break
+            }
+
+            let host = &hstore.state.hosts[hostidx];
+            if host.ping_done {
+                if let Some(dur) = host.ping_res {
+                    println!(
+                        "Live host {} {}",
+
+                        format!(
+                            "{:<28}",
+
+                            format!(
+                                "{:<15?} ({:.2?}ms)",
+                                host.ip, dur.as_millis()
+                            )
+                        ),
+                        match &host.host_name {
+                            Some(Ok(hostname)) => hostname.green(),
+                            _ => "--".red()
+                        },
+                    )
+                }
+                hostidx += 1;
+            }
+        }
+    }
 }

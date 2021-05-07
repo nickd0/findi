@@ -1,0 +1,9 @@
+# Build with 
+# docker build -t findi/cross:$LINUX_TUYPE -f dockYPEockerfile.$LINUX_TYPE .
+
+[target.x86_64-unknown-linux-gnu]
+image = "findi/cross:x86_64-unknown-linux-gnu"
+
+[target.arm-unknown-linux-gnueabihf]
+image = "findi/cross:arm-unknown-linux-gnueabihf"
+

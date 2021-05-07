@@ -294,34 +294,34 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                 Key::Char('c') | Key::Shift('C') => {
 
                     if let Some(host_idx) = store.state.table_state.selected() {
-                        let mut res_str = String::new();
-                        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-                        let hosts: Vec<&Host> = store.state.filtered_hosts().collect();
+                        let mut notif = Notification::default();
 
-                        match key {
-                            Key::Char('c') => {
-                                let host_ip = hosts[host_idx].ip;
-                                res_str = format!("Address {} copied to clipboard", host_ip.to_string());
-                                ctx.set_contents(host_ip.to_string()).unwrap();
-                            },
-                            Key::Shift('C') => {
-                                if let Some(Ok(hostname)) = hosts[host_idx].host_name.as_ref() {
-                                    res_str = format!("Hostname {} copied to clipboard", hostname.to_owned());
-                                    ctx.set_contents(hostname.to_owned()).unwrap();
+                        match ClipboardProvider::new() {
+                            Ok::<ClipboardContext, Box<dyn std::error::Error>>(mut ctx) => {
+                                let hosts: Vec<&Host> = store.state.filtered_hosts().collect();
+                                match key {
+                                    Key::Char('c') => {
+                                        let host_ip = hosts[host_idx].ip;
+                                        notif.message = format!("Address {} copied to clipboard", host_ip.to_string());
+                                        ctx.set_contents(host_ip.to_string()).unwrap();
+                                    },
+                                    Key::Shift('C') => {
+                                        if let Some(Ok(hostname)) = hosts[host_idx].host_name.as_ref() {
+                                            notif.message = format!("Hostname {} copied to clipboard", hostname.to_owned());
+                                            ctx.set_contents(hostname.to_owned()).unwrap();
+                                        }
+                                    },
+                                    _ => {}
                                 }
+
                             },
-                            _ => {}
+                            Err(_) => {
+                                notif.level = NotificationLevel::Warn;
+                                notif.message = "Could not copy to clipboard".to_owned()
+                            }
                         }
 
-                        if !res_str.is_empty() {
-                            store.dispatch(AppAction::SetNotification(
-                                Some(Notification::new(
-                                    "Status",
-                                    &res_str,
-                                    NotificationLevel::Info
-                                ))
-                            ));
-                        }
+                        store.dispatch(AppAction::SetNotification(Some(notif)));
                     }
 
                     None

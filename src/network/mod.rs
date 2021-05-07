@@ -116,7 +116,7 @@ pub fn dispatch_port_scan(store: SharedAppStateStore) {
         drop(lstore);
 
         for (port, _) in modal_state.ports {
-            let port_run = !store.lock().unwrap().state.modal_state.is_some();
+            let port_run = store.lock().unwrap().state.modal_state.is_none();
 
             if !GLOBAL_RUN.load(Ordering::Acquire) || port_run {
                 break

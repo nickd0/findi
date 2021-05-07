@@ -1,0 +1,2 @@
+- **3/29/21** When starting a new query, if you select the "No" option on the confirmation modal and hit return, the cursor just moves to "Yes"
+  - Similarly, esc key should exit the modal, not the entire program
