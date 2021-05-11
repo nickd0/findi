@@ -9,7 +9,10 @@ docker ps >/dev/null || (echo "Docker not running!" && exit 1)
 # TODO: pull suppported targets from cargo.toml?
 
 TARGETS=$1
-[ -n $TARGETS ] || TARGETS="arm-unknown-linux-gnueabihf x86_64-unknown-linux-gnu x86_64-apple-darwin"
+# [ $TARGETS ] || TARGETS="arm-unknown-linux-gnueabihf x86_64-unknown-linux-gnu x86_64-apple-darwin"
+[ $TARGETS ] || TARGETS="x86_64-unknown-linux-gnu x86_64-apple-darwin"
+
+echo "Targets $TARGETS"
 
 dir=$PWD
 
@@ -19,8 +22,10 @@ do
   if [ $target = "x86_64-apple-darwin" ];
   then
     cargo build --bin=findi --release
+    rel_dir="target/release"
   else
     cross build --bin=findi --release --target $target
+    rel_dir="target/$target/release"
   fi
 
   if [ ! "$?" -eq "0" ];
@@ -29,7 +34,7 @@ do
     exit 1
   fi
 
-  cd "target/$target/release"
+  cd $rel_dir
   tar czvf "$dir/release/$target.tar.gz" findi >/dev/null
   cd "$dir/release/"
   shasum -a 256 "$target.tar.gz" > "$target.sha256"
