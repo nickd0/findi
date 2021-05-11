@@ -153,7 +153,7 @@ fn main() {
             if host.ping_done {
                 if let Some(dur) = host.ping_res {
                     println!(
-                        "Live host {} {}",
+                        "Live host {} {}{}",
 
                         format!(
                             "{:<28}",
@@ -163,10 +163,18 @@ fn main() {
                                 host.ip, dur.as_millis()
                             )
                         ),
-                        match &host.host_name {
-                            Some(Ok(hostname)) => hostname.green(),
-                            _ => "--".red()
-                        },
+
+                        format!("{:<30}",
+                            match &host.host_name {
+                                Some(Ok(hostname)) => hostname.green(),
+                                _ => "--".red()
+                            }
+                        ),
+
+                        match hstore.state.port_query.len() {
+                            0 => String::default(),
+                            _ => format!(" TCP ports: {:?}", host.tcp_ports)
+                        }
                     )
                 }
                 hostidx += 1;
