@@ -98,7 +98,7 @@ fn main() {
 
     // } else if default_iface.is_some() {
     } else if let Some(default_if_some) = default_iface {
-        if let IpNetwork::V4(ipn) = default_if_some.ips[0] {
+        if let Some(IpNetwork::V4(ipn)) = default_if_some.ips.iter().find(|ip| matches!(ip, IpNetwork::V4(_))) {
             // TODO: how to handle multiple ips on one interface?
             hosts = ipn.iter().collect();
             query = ipn.to_string();
