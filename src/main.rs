@@ -26,8 +26,10 @@ use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool};
 
-use pnet::ipnetwork::IpNetwork;
-use pnet::datalink;
+use pnet::{
+    datalink,
+    ipnetwork::IpNetwork,
+};
 use clap::{App, Arg, ArgMatches, crate_version, crate_authors};
 use colored::Colorize;
 
@@ -57,6 +59,12 @@ fn parse_args<'a>() -> ArgMatches<'a> {
             .help("Network host query in CIDR notation")
             .takes_value(true))
 
+        .arg(Arg::with_name("interface")
+            .short("i")
+            .long("interface")
+            .help("Network interface for query")
+            .takes_value(true))
+
         .arg(Arg::with_name("scan_ports")
             .short("p")
             .long("tcpports")
@@ -77,10 +85,16 @@ fn main() {
     let matches = parse_args();
 
     let interfaces = datalink::interfaces();
+
+    // Find a suitable interface and match by name if provided
     let default_iface = interfaces
         .iter()
         .find(|e| {
-            e.is_up() && !e.is_loopback() && !e.ips.is_empty() && e.ips.iter().any(|&ip| ip.is_ipv4())
+            e.is_up() &&
+            !e.is_loopback() &&
+            !e.ips.is_empty() &&
+            e.ips.iter().any(|&ip| ip.is_ipv4()) &&
+            matches.value_of("interface").unwrap_or(&e.name) == e.name
         });
 
     let mut store = AppStateStore::new();
@@ -96,7 +110,6 @@ fn main() {
 
         query = input.to_owned();
 
-    // } else if default_iface.is_some() {
     } else if let Some(default_if_some) = default_iface {
         if let Some(IpNetwork::V4(ipn)) = default_if_some.ips.iter().find(|ip| matches!(ip, IpNetwork::V4(_))) {
             // TODO: how to handle multiple ips on one interface?
@@ -108,7 +121,11 @@ fn main() {
         }
 
     } else {
-        eprintln!("No input provided and could not find an available interface!");
+        if let Some(input_if)  = matches.value_of("interface") {
+            eprintln!("The interface {} was not suitable. It may be down, loopback, or not have an IPv4 address.", input_if)
+        } else {
+            eprintln!("No input provided and could not find a suitable interface!")
+        }
         exit(1);
     }
 
@@ -173,7 +190,7 @@ fn main() {
 
                         match hstore.state.port_query.len() {
                             0 => String::default(),
-                            _ => format!(" TCP ports: {:?}", host.tcp_ports)
+                            _ => format!(" TCP ports: {}", host.tcp_ports.iter().map(|&p| p.to_string()).collect::<Vec<String>>().join(","))
                         }
                     )
                 }

@@ -39,7 +39,7 @@ Roadmap
 - [x] Clipboard copy functionality
 - [ ] Routing, Page system
 - [x] Keyboard shortcuts and help menu
-- [ ] Query by interface rather than only CIDR
+- [x] Query by interface rather than only CIDR
 - [x] Default port scan option/filtering
 - [x] Stdout only option with no UI
   - branch `cli_args`
