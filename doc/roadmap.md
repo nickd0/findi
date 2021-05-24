@@ -30,8 +30,8 @@ Roadmap
 - [x] Use [crossterm](https://crates.io/crates/crossterm) backend
   - branch `crossterm`
 - [ ] Use terminal tick like in https://github.com/fdehau/tui-rs/blob/master/examples/crossterm_demo.rs
-- [ ] Query-wide TCP port scan results
-- [ ] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
+- [x] Query-wide TCP port scan results
+- [x] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [x] Individual result overview popup modal
   - [x] Additional TCP port scans of individual entry
   - Branch result_func
@@ -53,3 +53,5 @@ Roadmap
 - [ ] Service search: Multicast DNS to discover available services on the network (airplay, spotify connect, etc)
 - [ ] Carmen/traceroute integration for non-private queries
 - [ ] IPv6 support?
+- [ ] Use async/await?
+  - Tokio?

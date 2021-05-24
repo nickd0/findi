@@ -20,7 +20,6 @@ use state::store::AppStateStore;
 use state::actions::AppAction;
 use network::init_host_search;
 
-use std::thread;
 use std::process::exit;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
@@ -34,13 +33,6 @@ use clap::{App, Arg, ArgMatches, crate_version, crate_authors};
 use colored::Colorize;
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
-
-#[allow(dead_code)]
-fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        let _ = ui_loop(store);
-    })
-}
 
 fn parse_args<'a>() -> ArgMatches<'a> {
     App::new("findi")
@@ -147,10 +139,8 @@ fn main() {
 
     #[cfg(feature = "ui")]
     if !matches.is_present("disable_ui") {
-        let ui_thread = start_ui(shared_store);
-
-
-        let _ = ui_thread.join();
+        // Run UI on main thread
+        let _ = ui_loop(shared_store);
     } else {
         // TODO: move this elsewhere and accept an argument for different types out output
         // ie stdout, csv, json, etc

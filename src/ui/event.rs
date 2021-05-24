@@ -14,6 +14,11 @@ const POLL_INTERVAL: u64 = 100;
 //     KeyboardEvent(Key)
 // }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum Event {
+    Key(Key),
+    Tick,
+}
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Key {
@@ -142,7 +147,7 @@ impl From<KeyEvent> for Key {
 
 // TODO: this should use a findi event instead of key
 pub struct EventReader {
-    pub recv: mpsc::Receiver<Key>
+    pub recv: mpsc::Receiver<Event>
 }
 
 pub fn async_event_reader() -> EventReader {
@@ -151,11 +156,16 @@ pub fn async_event_reader() -> EventReader {
     let evt_tx = tx;
     thread::spawn(move || {
         loop {
+            // Check for events at POLL_INTERVAL ms
+            // if no events, send timer tick event
+            // so the ui loop doesn't have to constantly spin
             if poll(Duration::from_millis(POLL_INTERVAL)).unwrap() {
                 let evt = read().unwrap();
                 if let event::Event::Key(kevt) = evt {
-                    evt_tx.send(Key::from(kevt)).unwrap();
+                    evt_tx.send(Event::Key(Key::from(kevt))).unwrap();
                 }
+            } else {
+                evt_tx.send(Event::Tick).unwrap();
             }
         }
     });

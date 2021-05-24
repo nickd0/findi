@@ -11,7 +11,7 @@ pub mod event;
 
 use pages::{Page, draw_page, handle_page_events};
 
-use event::Key;
+use event::{Event, Key};
 use crate::state::store::SharedAppStateStore;
 use crate::GLOBAL_RUN;
 
@@ -45,7 +45,6 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
     let curr_page = Page::MainPage;
 
     terminal.clear()?;
-    // TODO control this from a separate thread using an Atomic::Bool
 
     while GLOBAL_RUN.load(Ordering::Acquire) {
         // Update the stateful table from application state
@@ -85,19 +84,29 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
         //
         // TODO: profile deref-ing vs cloning the Arc here
 
-        if let Some(key) = evt_stream.recv.try_iter().next() {
-            let mut lstore = store.lock().unwrap();
+        // Block until we either get an event or a timer tick
+        // Changing to .iter() from .try_iter() (blocking vs non)
+        if let Some(evt) = evt_stream.recv.iter().next() {
+            match evt {
+                Event::Key(key) => {
+                    let mut lstore = store.lock().unwrap();
 
-            // TODO: use match
-            if lstore.state.modal.is_some() {
-                modal::handle_modal_event(key, lstore.deref_mut(), store.clone())
-            } else {
-                handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
-            }
+                    // TODO: use match
+                    if lstore.state.modal.is_some() {
+                        modal::handle_modal_event(key, lstore.deref_mut(), store.clone())
+                    } else {
+                        handle_page_events(&curr_page, key, lstore.deref_mut(), store.clone());
+                    }
 
-            match key {
-                Key::Ctrl('c') | Key::Char('q') => GLOBAL_RUN.store(false, Ordering::Release),
-                _ => {}
+                    match key {
+                        Key::Ctrl('c') | Key::Char('q') => GLOBAL_RUN.store(false, Ordering::Release),
+                        _ => {}
+                    }
+                },
+
+                Event::Tick => {
+                    // Handle tick
+                }
             }
         }
     }
