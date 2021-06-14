@@ -1,35 +1,91 @@
-mod ip_parse;
-mod udp_pinger;
-mod dns;
-mod tcp_ping;
-mod ping_result;
+/*
+Notes:
+- Split DNS code into separate files
+  - dns/packet.rs
+    - question, answers, packet
+ - dns/mdns.rs
+- Should host lookup be in a different thread?
+  - Or somehow ping and host lookup should use the same UdpSocket?
+- Standardize error and result types
+*/
 
-use ip_parse::ip_parse;
-use udp_pinger::udp_ping;
-use tcp_ping::tcp_ping;
-use std::io::ErrorKind;
+mod network;
+mod ui;
+mod state;
+mod config;
 
-use colored::*;
+use ui::ui_loop;
+use network::input_parse;
+use state::store::AppStateStore;
+use state::actions::AppAction;
+use network::init_host_search;
 
+use std::thread;
+use std::process::exit;
+use std::net::Ipv4Addr;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool};
 use std::env;
 
+use pnet::ipnetwork::IpNetwork;
+use pnet::datalink;
+
+static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
+
+#[allow(dead_code)]
+fn start_ui(store: Arc<Mutex<AppStateStore>>) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let _ = ui_loop(store);
+    })
+}
+
 fn main() {
-    let input = env::args().nth(1).expect("Please provide an input");
-    let hosts = ip_parse(input).unwrap_or_default();
-    for host in hosts {
-        let active = udp_ping(host).is_ok();
-        let tcpping = match tcp_ping(host) {
-            Ok(_) => true,
-            Err(e) => {
-                println!("TCP error: {:?}", e.kind());
-                false
-            }
-        };
-        let string = format!("CIDR host: {} UDP: {}, TCP: {}", host, active, tcpping);
-        let mut col_string = string.white();
-        if active || tcpping {
-            col_string = string.green();
+    let interfaces = datalink::interfaces();
+    let default_iface = interfaces
+        .iter()
+        .find(|e| {
+            e.is_up() && !e.is_loopback() && !e.ips.is_empty() && e.ips.iter().any(|&ip| ip.is_ipv4())
+        });
+
+    let mut store = AppStateStore::new();
+
+    let hosts: Vec<Ipv4Addr>;
+    let query: String;
+
+    if let Some(input) = env::args().nth(1) {
+        match input_parse(&input) {
+            Ok(hs) => hosts = hs,
+            Err(msg) => return println!("{}", msg)
         }
-        println!("{}", col_string);
+
+        query = input;
+
+    // } else if default_iface.is_some() {
+    } else if let Some(default_if_some) = default_iface {
+        if let IpNetwork::V4(ipn) = default_if_some.ips[0] {
+            // TODO: how to handle multiple ips on one interface?
+            hosts = ipn.iter().collect();
+            query = ipn.to_string();
+        } else {
+            return println!("Currently only interfaces with an IPv4 address can be used. Current interface: {:?}", default_iface)
+        }
+
+    } else {
+        println!("No input provided and could not find an available interface!");
+        exit(1);
     }
+
+    store.dispatch(AppAction::BuildHosts(hosts));
+    store.dispatch(AppAction::SetQuery(query));
+    store.dispatch(AppAction::SetHostSearchRun(true));
+
+    let shared_store = Arc::new(Mutex::new(store));
+
+    #[cfg(feature = "ui")]
+    let ui_thread = start_ui(shared_store.clone());
+
+    init_host_search(shared_store);
+
+    #[cfg(feature = "ui")]
+    let _ = ui_thread.join();
 }

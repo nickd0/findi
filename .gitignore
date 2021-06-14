@@ -1,2 +1,6 @@
 /target
 __pycache__
+_keep
+.DS_Store
+.vscode
+release
