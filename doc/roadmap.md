@@ -29,7 +29,7 @@ Roadmap
 ## v0.2.0
 - [x] Use [crossterm](https://crates.io/crates/crossterm) backend
   - branch `crossterm`
-- [ ] Use terminal tick like in https://github.com/fdehau/tui-rs/blob/master/examples/crossterm_demo.rs
+- [x] Use terminal tick like in https://github.com/fdehau/tui-rs/blob/master/examples/crossterm_demo.rs
 - [x] Query-wide TCP port scan results
 - [x] Refactor event queue to something similar to the tui-rs [example](https://github.com/fdehau/tui-rs/blob/master/examples/util/event.rs)
 - [x] Individual result overview popup modal
@@ -37,7 +37,7 @@ Roadmap
   - Branch result_func
 - [ ] Filter results by hostname
 - [x] Clipboard copy functionality
-- [ ] Routing, Page system
+- [ ] ~~Routing, Page system~~
 - [x] Keyboard shortcuts and help menu
 - [x] Query by interface rather than only CIDR
 - [x] Default port scan option/filtering

@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# TODO: add clippy
 jobs:
   build:
     runs-on: ubuntu-latest

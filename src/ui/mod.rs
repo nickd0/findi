@@ -40,7 +40,9 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let evt_stream = event::async_event_reader();
+    let tick_len = store.lock().unwrap().state.app_config.tick_len;
+
+    let evt_stream = event::async_event_reader(tick_len);
 
     let curr_page = Page::MainPage;
 

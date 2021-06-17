@@ -7,13 +7,6 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-const POLL_INTERVAL: u64 = 100;
-
-// enum Event {
-//     ModalSelect(ModalOpt),
-//     KeyboardEvent(Key)
-// }
-
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Event {
     Key(Key),
@@ -150,16 +143,16 @@ pub struct EventReader {
     pub recv: mpsc::Receiver<Event>
 }
 
-pub fn async_event_reader() -> EventReader {
+pub fn async_event_reader(poll_interval: usize) -> EventReader {
     let (tx, rx) = mpsc::channel();
 
     let evt_tx = tx;
     thread::spawn(move || {
         loop {
-            // Check for events at POLL_INTERVAL ms
+            // Check for events at AppConfig.tick_len ms
             // if no events, send timer tick event
             // so the ui loop doesn't have to constantly spin
-            if poll(Duration::from_millis(POLL_INTERVAL)).unwrap() {
+            if poll(Duration::from_millis(poll_interval as u64)).unwrap() {
                 let evt = read().unwrap();
                 if let event::Event::Key(kevt) = evt {
                     evt_tx.send(Event::Key(Key::from(kevt))).unwrap();

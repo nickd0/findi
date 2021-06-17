@@ -7,6 +7,7 @@ use crate::ui::{
     notification::Notification,
     modal::Modal,
 };
+use crate::config::AppConfig;
 use crate::state::host_modal_state::HostModalState;
 
 // use super::host_modal_state::HostModalState;
@@ -26,7 +27,8 @@ pub struct ApplicationState {
     pub selected_host: Option<usize>,
     // TODO: make dynamic?
     pub modal_state: Option<HostModalState>,
-    pub search_filter_opt: SearchFilterOption
+    pub search_filter_opt: SearchFilterOption,
+    pub app_config: AppConfig,
     // TODO: should ui focus be part of application state?
     // pub focus: UiComponent
 }

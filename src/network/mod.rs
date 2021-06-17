@@ -11,7 +11,6 @@ use crate::state::{
 };
 
 use crate::network::host::Host;
-use crate::config::AppConfig;
 use crate::state::{
     actions::AppAction
 };
@@ -71,18 +70,15 @@ waiting on the store lock only to be cancelled. Revisit this and consider using 
 */
 pub fn init_host_search(store: SharedAppStateStore) {
     thread::spawn(move || {
-        let config = AppConfig::default();
-
-
         // Do we need to clone here?
         let mut lstore = store.lock().unwrap();
         let hosts = lstore.state.hosts.clone();
+        let network_nworkers = lstore.state.app_config.nworkers;
         // Wait for search run to be started
-
         lstore.dispatch(AppAction::SetHostSearchRun(true));
         drop(lstore);
 
-        let pool = ThreadPool::new(config.nworkers);
+        let pool = ThreadPool::new(network_nworkers);
 
         for host in hosts {
             let lstore = store.lock().unwrap();
