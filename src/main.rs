@@ -19,6 +19,7 @@ use network::input_parse;
 use state::store::AppStateStore;
 use state::actions::AppAction;
 use network::init_host_search;
+use config::AppConfig;
 
 use std::process::exit;
 use std::net::Ipv4Addr;
@@ -67,6 +68,18 @@ fn parse_args<'a>() -> ArgMatches<'a> {
             .short("o")
             .long("output")
             .help("Output file location with extension (csv|json|txt)")
+            .takes_value(true))
+
+        .arg(Arg::with_name("tick_len")
+            .short("t")
+            .long("ticklen")
+            .help("UI timer tick length in ms. If no key events, UI redraws at this interval.")
+            .takes_value(true))
+
+        .arg(Arg::with_name("nworkers")
+            .short("w")
+            .long("numworkers")
+            .help("Number of workers for network scanning.")
             .takes_value(true))
 
         .get_matches()
@@ -126,6 +139,19 @@ fn main() {
     if let Some(port_list) = matches.value_of("scan_ports") {
         store.dispatch(AppAction::SetPortQuery(Some(port_list.to_owned())))
     }
+
+    // Setup user config
+    let mut config = AppConfig::default();
+
+    if let Some(nworkers) = matches.value_of("nworkers").and_then(|nw| nw.parse().ok()) {
+        config.nworkers = nworkers;
+    }
+
+    if let Some(tick_len) = matches.value_of("tick_len").and_then(|tl| tl.parse().ok()) {
+        config.tick_len = tick_len;
+    }
+
+    store.dispatch(AppAction::SetConfig(config));
 
     let num_hosts = hosts.len();
 

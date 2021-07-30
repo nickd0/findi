@@ -9,6 +9,7 @@ use crate::ui::{
 use crate::ui::notification::Notification;
 use crate::ui::modal::Modal;
 use crate::state::host_modal_state::HostModalAction;
+use crate::config::AppConfig;
 
 use std::net::Ipv4Addr;
 
@@ -33,7 +34,10 @@ pub enum AppAction {
     SetModalAction(HostModalAction),
     QueryComplete,
     RestartQuery,
-    IterateFocus
+    IterateFocus,
+    SetConfig(AppConfig),
+    SetConfigNWorkers(usize),
+    SetConfigTick(usize),
 }
 
 // impl AppAction {

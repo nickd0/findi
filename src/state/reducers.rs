@@ -176,6 +176,20 @@ impl Reducer<AppAction> for AppReducer {
                 state
             },
 
+            AppAction::SetConfig(config) => {
+                state.app_config = config;
+                state
+            },
+
+            AppAction::SetConfigNWorkers(nworkers) => {
+                state.app_config.nworkers = nworkers;
+                state
+            },
+
+            AppAction::SetConfigTick(tick_len) => {
+                state.app_config.tick_len = tick_len;
+                state
+            },
             _ => state
         }
     }
@@ -275,5 +289,19 @@ mod test {
         let new_state = test_helper_reduce_state(action, None);
 
         assert_eq!(new_state.get_selected_host(), None);
+    }
+
+    #[test]
+    fn test_action_set_config_from_cli() {
+        let nworkers = 50;
+        let tick_len = 60;
+
+        let action = AppAction::SetConfigNWorkers(nworkers);
+        let new_state = test_helper_reduce_state(action, None);
+        assert_eq!(new_state.app_config.nworkers, nworkers);
+
+        let action = AppAction::SetConfigTick(tick_len);
+        let new_state = test_helper_reduce_state(action, None);
+        assert_eq!(new_state.app_config.tick_len, tick_len);
     }
 }
