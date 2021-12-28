@@ -10,6 +10,7 @@ Notes:
 */
 
 mod network;
+mod service;
 mod ui;
 mod state;
 mod config;
@@ -32,6 +33,11 @@ use pnet::{
 };
 use clap::{App, Arg, ArgMatches, crate_version, crate_authors};
 use colored::Colorize;
+
+// TODO delete
+use crate::service::service::build_service_query_packet;
+use crate::network::dns::{dns_udp_transact};
+use crate::service::service_list::DEFAULT_SERVICES;
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
 
@@ -82,6 +88,12 @@ fn parse_args<'a>() -> ArgMatches<'a> {
             .help("Number of workers for network scanning.")
             .takes_value(true))
 
+        .arg(Arg::with_name("service_scan")
+            .short("s")
+            .long("servicescan")
+            .help("Scan for local network services with mDNS.")
+            .takes_value(true))
+
         .get_matches()
 }
 
@@ -106,6 +118,21 @@ fn main() {
 
     let hosts: Vec<Ipv4Addr>;
     let query: String;
+
+    if let Some(svc_name) = matches.value_of("service_scan") {
+        match &DEFAULT_SERVICES.get(svc_name) {
+            Some(svcs) => {
+                let (socket_addr, mut packet) = build_service_query_packet(svcs);
+                let mut buf = [0; 512];
+                dns_udp_transact(socket_addr, &mut packet, &mut buf).expect("mDNS query failed");
+                exit(0)
+            },
+            None => {
+                println!("No service groups found for {}", svc_name);
+                exit(1)
+            }
+        }
+    }
 
     if let Some(input) = matches.value_of("custom_cidr") {
         match input_parse(&input) {

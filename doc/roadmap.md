@@ -51,6 +51,7 @@ Roadmap
 - [ ] Menu bar
 - [ ] Mouse event support
 - [ ] Service search: Multicast DNS to discover available services on the network (airplay, spotify connect, etc)
+  - [ ] Convert all `net::UdpSocket` to `socket2::socket`
 - [ ] Carmen/traceroute integration for non-private queries
 - [ ] IPv6 support?
 - [ ] Use async/await?

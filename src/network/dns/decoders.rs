@@ -1,4 +1,5 @@
-use super::{DnsPacket, DnsQuestionClass, DnsQuestionType, serializer};
+use super::packet::{DnsPacket, serializer};
+use super::query::{DnsQuestionClass, DnsQuestionType};
 
 use bincode::config::Options;
 use serde::{Deserialize, Serialize};
