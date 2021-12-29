@@ -21,6 +21,7 @@ pub mod encoders;
 pub mod decoders;
 pub mod query;
 pub mod packet;
+pub mod decodable;
 
 use decoders::DnsAnswerDecoder;
 use query::{DnsQuestion, DnsQuestionType};
@@ -37,7 +38,8 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr) -> Result<T> {
 
     let port = match qtype {
         DnsQuestionType::NBSTAT => 137,
-        DnsQuestionType::PTR => 5353
+        DnsQuestionType::PTR => 5353,
+        _ => 5353,
     };
 
     let tid: u16 = 0xF00D;
@@ -56,20 +58,21 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr) -> Result<T> {
 }
 
 // TODO make private
+// TODO: decode here?
 pub fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> {
     let usock = UdpSocket::bind("0.0.0.0:0")?;
     usock.send_to(&packet.as_bytes().unwrap(), dst)?;
     // TODO: make this timeout configurable
     usock.set_read_timeout(Some(Duration::from_millis(200)))?;
-    loop {
-        match usock.recv_from(buf) {
-            Ok((sz, addr)) => {
-                println!("Received {} bytes from {}", sz, addr);
-                println!("{:?}", &buf[..sz]);
-            },
-            Err(_) => break
-        }
+    // loop {
+    match usock.recv_from(buf) {
+        Ok((sz, addr)) => {
+            println!("Received {} bytes from {}", sz, addr);
+            println!("{:?}", &buf[..sz]);
+        },
+        Err(_) => {}
     }
+    // }
     Ok(())
 }
 

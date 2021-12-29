@@ -20,20 +20,6 @@ impl DnsAddressEncoder for DnsPtrEncoder {
         };
         addr_enc
     }
-
-    // TODO: move this to a different impl, there should be one for encoding addresses to
-    // ARPA searches and one for encoding question host names like in an mDNS serice search
-    // fn encode_str(name: &'static str) -> Vec<u8> {
-    //     let mut bts: &[u8];
-    //     let mut addr_enc: Vec<u8> = vec![];
-    //     for chunk in name.split('.') {
-    //         addr_enc.push(chunk.len() as u8);
-    //         bts = chunk.as_bytes();
-    //         addr_enc.extend_from_slice(&bts);
-    //     };
-    //     addr_enc
-
-    // }
 }
 
 pub struct DnsNbstatEncoder {}
@@ -66,6 +52,7 @@ fn second_level_encode(addr: &str) -> String {
 mod test {
     use super::*;
     use crate::network::dns::query::DnsQuestionType;
+    use std::net::Ipv4Addr;
 
     #[test]
     fn test_second_level_encode() {

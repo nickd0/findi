@@ -36,7 +36,11 @@ use colored::Colorize;
 
 // TODO delete
 use crate::service::service::build_service_query_packet;
-use crate::network::dns::{dns_udp_transact};
+use crate::network::dns::{
+    dns_udp_transact,
+    packet::DnsPacket,
+    decodable::DnsDecodable,
+};
 use crate::service::service_list::DEFAULT_SERVICES;
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
@@ -125,6 +129,8 @@ fn main() {
                 let (socket_addr, mut packet) = build_service_query_packet(svcs);
                 let mut buf = [0; 512];
                 dns_udp_transact(socket_addr, &mut packet, &mut buf).expect("mDNS query failed");
+                let (packet, _) = DnsPacket::decode(&buf).unwrap();
+                println!("Answer: {}", packet.answers[0].hostname);
                 exit(0)
             },
             None => {
