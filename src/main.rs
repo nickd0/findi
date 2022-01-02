@@ -39,7 +39,6 @@ use crate::service::service::build_service_query_packet;
 use crate::network::dns::{
     dns_udp_transact,
     packet::DnsPacket,
-    decodable::DnsDecodable,
 };
 use crate::service::service_list::DEFAULT_SERVICES;
 
@@ -127,10 +126,11 @@ fn main() {
         match &DEFAULT_SERVICES.get(svc_name) {
             Some(svcs) => {
                 let (socket_addr, mut packet) = build_service_query_packet(svcs);
-                let mut buf = [0; 512];
-                dns_udp_transact(socket_addr, &mut packet, &mut buf).expect("mDNS query failed");
-                let (packet, _) = DnsPacket::decode(&buf).unwrap();
-                println!("Answer: {}", packet.answers[0].hostname);
+                let mut packets: Vec<DnsPacket> = vec![];
+                dns_udp_transact(socket_addr, &mut packet, &mut packets).expect("mDNS query failed");
+                for packet in packets {
+                    println!("Answer: {}.{}", packet.answers[0].hostname, packet.questions[0].name);
+                }
                 exit(0)
             },
             None => {
@@ -217,7 +217,11 @@ fn main() {
 
             let host = &hstore.state.hosts[hostidx];
             if host.ping_done {
-                if let Some(dur) = host.ping_res {
+                if host.ping_res.is_some() || host.host_name.as_ref().unwrap().is_ok() {
+                    let dur_str = match host.ping_res {
+                        Some(d) => format!("{:.2?}ms", d.as_millis()),
+                        None => "--".to_owned()
+                    };
                     println!(
                         "Live host {} {}{}",
 
@@ -225,8 +229,8 @@ fn main() {
                             "{:<28}",
 
                             format!(
-                                "{:<15?} ({:.2?}ms)",
-                                host.ip, dur.as_millis()
+                                "{:<15?} {}",
+                                host.ip, dur_str
                             )
                         ),
 

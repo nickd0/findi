@@ -4,12 +4,11 @@ use super::encoders::{DnsAddressEncoder, DnsPtrEncoder, DnsNbstatEncoder};
 use super::query::{DnsAnswer, DnsQuestion, DnsQuestionType};
 use super::decodable::{serializer, DnsDecodable};
 
-use bincode::config::{DefaultOptions, Options};
+use bincode::config::Options;
 use serde::{Deserialize, Serialize};
 use anyhow::{self, Result};
 
 use std::net::Ipv4Addr;
-use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DnsPacketHeader {
@@ -34,11 +33,9 @@ impl Default for DnsPacketHeader {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
 pub struct DnsPacket {
     pub header: DnsPacketHeader,
 
-    #[serde(skip_deserializing, skip_serializing)]
     pub dest_ip: Option<Ipv4Addr>,
 
     pub questions: Vec<DnsQuestion>,
@@ -72,22 +69,6 @@ impl DnsPacket {
         }
     }
 
-    pub fn from(header: DnsPacketHeader) -> DnsPacket {
-        Self {
-            header,
-            ..Default::default()
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn from_resp_bytes(bytes: &[u8]) -> Result<DnsPacket> {
-        let header: DnsPacketHeader = serializer()
-            .deserialize(&bytes[..12])?;
-
-        let pack = DnsPacket::from(header);
-        Ok(pack)
-    }
-
     pub fn add_q(&mut self, quest: DnsQuestion) {
         self.header.n_qs += 1;
         self.questions.push(quest);
@@ -119,8 +100,8 @@ impl DnsPacket {
     }
 }
 
-impl DnsDecodable<DnsPacket> for DnsPacket {
-    fn decode(bytes: &[u8]) -> Result<(DnsPacket, usize)> {
+impl DnsPacket {
+    pub fn decode(bytes: &[u8]) -> Result<(DnsPacket, usize)> {
         let header: DnsPacketHeader = serializer().deserialize(&bytes[..12])?;
         let mut packet = DnsPacket {
             header,
@@ -245,44 +226,6 @@ mod tests {
         assert_eq!(packet.as_bytes().unwrap(), NB_PACKET_BYTES);
     }
 
-    #[test]
-    fn test_dns_packet_buffer_parse() {
-        let mut packet_buffer: Vec<u8> = PACKET_BYTES.to_vec().clone();
-        packet_buffer[7] = 0x01;
-
-        let tid = 0xF0F0;
-        let ip = Ipv4Addr::new(10, 0, 9, 10);
-        let mut packet = DnsPacket::new(tid, ip);
-
-        let q = DnsQuestion::build_rlookup(ip, DnsQuestionType::PTR);
-        packet.add_q(q);
-        let _ = packet.as_bytes();
-
-        // A response with hostname a-host.local
-
-        packet_buffer.extend(vec![
-            // Name pointer
-            0xC0, 0x00,
-            // Question type PTR
-            0x00, 0x0C,
-            // Question class IN
-            0x00, 0x01,
-            // TTL 600
-            0x00, 0x00, 0x02, 0x58,
-            // Size of address
-            0x00, 0x0e,
-
-            0x06,
-            0x61, 0x2d, 0x68, 0x6f, 0x73, 0x74, // "a-host"
-            0x05,
-            0x6c, 0x6f, 0x63, 0x61, 0x6c, // "local"
-            0x00
-        ]);
-
-        let resp_packet = DnsPacket::from_resp_bytes(&packet_buffer).unwrap();
-
-        assert_eq!(resp_packet.header.n_answ, 1);
-    }
 
     #[test]
     pub fn test_tryfrom_packet_bytes() {

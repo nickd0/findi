@@ -2,8 +2,8 @@ use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
 use super::udp_ping::udp_ping;
 use super::ping_result::{PingResultOption};
 use super::dns::{
-    decoders::{NbnsAnswer, MdnsAnswer},
-    reverse_dns_lookup
+    query::DnsQuestionType,
+    reverse_dns_lookup,
 };
 
 use anyhow::Result;
@@ -68,18 +68,18 @@ impl Host {
 
         // Perform mDNS reverse lookup
         // Then NBNS NBSTAT query if fails
-        match reverse_dns_lookup::<MdnsAnswer>(ip) {
-            Ok(ans) => {
-                host.host_name = Some(Ok(ans.hostname));
+        match reverse_dns_lookup(ip, DnsQuestionType::PTR) {
+            Some(answer) => {
+                host.host_name = Some(Ok(answer.hostname));
                 host.res_type = Some(HostResolutionType::MDNS)
             },
-            Err(_) => {
-                match reverse_dns_lookup::<NbnsAnswer>(ip) {
-                    Ok(ans) => {
-                        host.host_name = Some(Ok(ans.hostname));
+            None => {
+                match reverse_dns_lookup(ip, DnsQuestionType::NBSTAT) {
+                    Some(answer) =>{
+                        host.host_name = Some(Ok(answer.hostname));
                         host.res_type = Some(HostResolutionType::NBNS)
                     },
-                    Err(_) => host.host_name = Some(Err("Reverse lookup failed".to_owned()))
+                    None => host.host_name = Some(Err("Reverse lookup failed".to_owned()))
                 }
             }
         }

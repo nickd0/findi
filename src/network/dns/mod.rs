@@ -18,13 +18,11 @@ mDNS multicast group is on 224.0.0.251
 */
 
 pub mod encoders;
-pub mod decoders;
 pub mod query;
 pub mod packet;
 pub mod decodable;
 
-use decoders::DnsAnswerDecoder;
-use query::{DnsQuestion, DnsQuestionType};
+use query::{DnsQuestion, DnsQuestionType, DnsAnswer};
 use packet::DnsPacket;
 
 use anyhow::Result;
@@ -33,9 +31,7 @@ use std::net::{Ipv4Addr, UdpSocket, ToSocketAddrs};
 use std::time::Duration;
 
 // For now, we assume only one answer per reverse lookup, so only return one in this func
-pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr) -> Result<T> {
-    let qtype = T::default_qtype();
-
+pub fn reverse_dns_lookup(ip: Ipv4Addr, qtype: DnsQuestionType) -> Option<DnsAnswer> {
     let port = match qtype {
         DnsQuestionType::NBSTAT => 137,
         DnsQuestionType::PTR => 5353,
@@ -45,51 +41,38 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr) -> Result<T> {
     let tid: u16 = 0xF00D;
     let mut packet = DnsPacket::new(tid, ip);
     let nb_q = DnsQuestion::build_rlookup(ip, qtype);
-    let mut buf = [0; 100];
     packet.add_q(nb_q);
+    let mut rcv_packets: Vec<DnsPacket> = vec![];
 
-    dns_udp_transact((ip, port), &mut packet, &mut buf)?;
+    dns_udp_transact((ip, port), &mut packet, &mut rcv_packets).ok()?;
 
     // Do we care about the header?
     // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
     // NetBIOS lookups always have the same offset, so no need to parse header for now
     // let answer = NbnsAnswer::decode(&buf[12..])?;
-    T::decode(&packet, &buf)
+    rcv_packets.pop()?.answers.pop()
 }
 
 // TODO make private
-// TODO: decode here?
-pub fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> {
+pub fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, rcv_packets: &mut Vec<DnsPacket>) -> Result<()> {
     let usock = UdpSocket::bind("0.0.0.0:0")?;
+    let mut buf: [u8; 1024] = [0; 1024];
     usock.send_to(&packet.as_bytes().unwrap(), dst)?;
     // TODO: make this timeout configurable
     usock.set_read_timeout(Some(Duration::from_millis(200)))?;
-    // loop {
-    match usock.recv_from(buf) {
-        Ok((sz, addr)) => {
-            println!("Received {} bytes from {}", sz, addr);
-            println!("{:?}", &buf[..sz]);
-        },
-        Err(_) => {}
+
+    loop {
+        match usock.recv_from(&mut buf) {
+            Ok((sz, _)) => {
+                match DnsPacket::decode(&buf[0..sz]) {
+                    Ok((packet, _)) => {
+                        rcv_packets.push(packet);
+                    },
+                    Err(_) => {}
+                }
+            },
+            Err(_) => break
+        }
     }
-    // }
     Ok(())
-}
-
-// TODO delete this
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::service::service::{build_service_query_packet, Service};
-
-    #[test]
-    pub fn test_transct() {
-		let svcs = vec![
-			Service::new("Spotify", "_spotify-connect")
-		];
-		let (socket_addr, mut packet) = build_service_query_packet(&svcs);
-        let mut buf = [0; 100];
-        dns_udp_transact(socket_addr, &mut packet, &mut buf).unwrap();
-        println!("{:?}", buf)
-    }
 }
