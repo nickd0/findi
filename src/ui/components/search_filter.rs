@@ -28,7 +28,7 @@ impl Default for SearchFilterOption {
     }
 }
 
-pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut Frame<B>) {
+pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut Frame<B>, title: &str) {
     let filter_str = match store.state.search_filter_opt {
         SearchFilterOption::ShowAll => "Show all".to_owned(),
         SearchFilterOption::ShowFound => "Show resolved only".to_owned(),
@@ -50,7 +50,7 @@ pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut
                 _ => border_style(false)
             }
         )
-        .title(selectable_title("Filter/sort", Style::default()));
+        .title(selectable_title(title, Style::default()));
 
     let filter_option = Paragraph::new(span)
         .alignment(Alignment::Center)

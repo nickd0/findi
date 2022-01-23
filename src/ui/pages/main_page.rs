@@ -1,3 +1,4 @@
+// UI page for host scan.
 use tui::{
     backend::Backend,
     layout::{Constraint, Layout, Direction},
@@ -157,7 +158,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
     f.render_widget(input, first_row[0]);
 
     // Render filter options
-    draw_search_filter(&*lstore, first_row[1], f);
+    draw_search_filter(&*lstore, first_row[1], f, "Filter/Sort");
 
     if let PageContent::QueryInput = curr_focus {
         f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1)

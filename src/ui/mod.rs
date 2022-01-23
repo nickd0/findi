@@ -30,7 +30,8 @@ use std::io::{self, Write};
 use std::sync::atomic::Ordering;
 use std::ops::DerefMut;
 
-pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
+// pub fn ui_loop(store: SharedAppStateStore, page: Page) -> Result<()> {
+pub fn ui_loop(store: SharedAppStateStore, curr_page: Page) -> Result<()> {
     enable_raw_mode()?;
 
     let mut stdout = io::stdout();
@@ -43,8 +44,6 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
     let tick_len = store.lock().unwrap().state.app_config.tick_len;
 
     let evt_stream = event::async_event_reader(tick_len);
-
-    let curr_page = Page::MainPage;
 
     terminal.clear()?;
 
