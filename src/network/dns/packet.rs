@@ -17,7 +17,7 @@ pub struct DnsPacketHeader {
     n_qs: u16,
     n_answ: u16,
     n_auth: u16,
-    pub n_addn: u16,
+    n_addn: u16,
 }
 
 impl Default for DnsPacketHeader {
@@ -112,21 +112,20 @@ impl DnsPacket {
         };
         let mut idx = 12;
         for _ in 0..packet.header.n_qs {
-            let (q, sz) =  DnsQuestion::decode(&bytes[idx..])?;
-            // TODO: need to store references to the questions
+            let (q, sz) =  DnsQuestion::decode(&bytes, idx)?;
             packet.questions.push(q);
             idx += sz;
         }
 
         for _ in 0..packet.header.n_answ {
-            let (a, sz) =  DnsAnswer::decode(&bytes[idx..])?;
+            let (a, sz) =  DnsAnswer::decode(&bytes, idx)?;
             packet.answers.push(a);
             idx += sz;
         }
 
         // Decode aditional answers
         for _ in 0..packet.header.n_addn {
-            let (a, sz) = DnsAnswer::decode(&bytes[idx..])?;
+            let (a, sz) = DnsAnswer::decode(&bytes, idx)?;
             packet.addn_records.push(a);
             idx += sz;
         }

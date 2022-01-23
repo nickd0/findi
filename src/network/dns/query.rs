@@ -13,6 +13,8 @@ use std::fmt;
 use std::str;
 use std::iter::Iterator;
 
+const PTR_BYTE: u8 = 0xc0;
+
 // A PTR record is used for reverse DNS lookup
 // https://www.cloudflare.com/learning/dns/dns-records/dns-ptr-record/
 #[derive(Serialize_repr, Deserialize_repr, Eq, PartialEq, Debug)]
@@ -27,19 +29,6 @@ pub enum DnsQuestionType {
     NBSTAT = 0x00,
 }
 
-impl DnsQuestionType {
-    fn contains_value(val: u16) -> bool {
-        match val {
-            x if x == DnsQuestionType::A as u16 => true,
-            x if x == DnsQuestionType::PTR as u16 => true,
-            x if x == DnsQuestionType::TXT as u16 => true,
-            x if x == DnsQuestionType::AAAA as u16 => true,
-            x if x == DnsQuestionType::SRV as u16 => true,
-            x if x == DnsQuestionType::NBSTAT as u16 => true,
-            _ => false
-        }
-    }
-}
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
 #[repr(u16)]
@@ -89,6 +78,9 @@ impl DnsQuestion {
 pub struct DnsAnswer {
     #[serde(skip_deserializing, skip_serializing)]
     pub ptr_offset: u16,
+
+    #[serde(skip_deserializing, skip_serializing)]
+    pub name: String,
 
     pub qtype: DnsQuestionType,
     pub qclass: DnsQuestionClass,
@@ -164,11 +156,45 @@ fn decode_ptr_record(bytes: &Vec<u8>, terminator: u8) -> Result<(String, usize)>
     Ok((namestr, idx))
 }
 
+fn decode_label(bytes: &[u8], start: usize) -> Result<(String, usize)> {
+    // Decode a label according to RFC compression rules
+    // https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4
+    let mut name_buf = vec![];
+    let mut byte = bytes[start];
+    let mut idx = start;
+    let mut count: usize;
+    while (byte & PTR_BYTE != PTR_BYTE) && byte != 0x0 {
+        name_buf.extend(&bytes[(idx + 1)..(idx + 1 + (byte as usize))]);
+        idx = idx + 1 + (byte as usize);
+        match bytes.get(idx) {
+            Some(b) => {
+                byte = *b;
+                name_buf.push('.' as u8);
+            },
+            None => break
+        }
+    }
+    count = idx - start;
+    let mut namestr = std::str::from_utf8(&name_buf)?.to_owned();
+    if byte != 0x0 {
+        // In this case, we have a pointer label
+        let offset = (((bytes[idx] ^ PTR_BYTE) as u16) << 8) | bytes[idx + 1] as u16;
+        if let Ok((ptr_name, _)) = decode_label(bytes, offset as usize) {
+            namestr.push_str(&ptr_name);
+        }
+        count += 1;
+    }
+    count += 1;
+    let opt_name = namestr.trim_end_matches('.');
+    Ok((opt_name.to_owned(), count))
+}
+
 impl DnsDecodable for DnsQuestion {
-    fn decode(bytes: &[u8]) -> Result<(DnsQuestion, usize)> {
-        let (name, len) = decode_ptr_record(&bytes.to_vec(), 0)?;
+    fn decode(bytes: &[u8], start: usize) -> Result<(DnsQuestion, usize)> {
+        let qbytes = &bytes[start..];
+        let (name, len) = decode_ptr_record(&qbytes.to_vec(), 0)?;
         let mut query: DnsQuestion = serializer()
-            .deserialize(&bytes[(len + 1)..(len + 5)])?;
+            .deserialize(&qbytes[(len + 1)..(len + 5)])?;
         query.name = name;
         Ok((query, len + 5))
     }
@@ -176,34 +202,22 @@ impl DnsDecodable for DnsQuestion {
 
 
 impl DnsDecodable for DnsAnswer {
-    fn decode(bytes: &[u8]) -> Result<(DnsAnswer, usize)> {
-        let mut name_buf: Vec<u8> = vec![];
-        let mut idx = 0;
-        let mut chk_byte: u16;
-        // build string until we see a valid qtype https://www.rfc-editor.org/rfc/rfc1035
-        // TODO: add NAME field build from this first chunk of bytes (and using the pointer 0xc0)
-        // see https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4
-        loop {
-            name_buf.push(bytes[idx]);
-            chk_byte = u16::from_be_bytes([bytes[idx], bytes[idx + 1]]);
-            if DnsQuestionType::contains_value(chk_byte) {
-                break
-            }
-            idx += 1;
-        }
-        let start = idx + 10;
-        let mut answ: DnsAnswer = serializer().deserialize(&bytes[idx..start])?;
+    fn decode(bytes: &[u8], start: usize) -> Result<(DnsAnswer, usize)> {
+        let ans_bytes = &bytes[start..];
+        let (name, sz) = decode_label(bytes, start).unwrap();
+        let start = sz + 10;
+        let mut answ: DnsAnswer = serializer().deserialize(&ans_bytes[sz..start])?;
+        answ.name = name;
         // answ.ptr_offset = answ.ptr_offset & 0xfff;
         let len = start + answ.datalen as usize;
         match answ.qtype {
             DnsQuestionType::NBSTAT => {
                 // TODO: more detailed reporting of NBNS queries
-                // let (nbans, _) = NbnsAnswer::decode(bytes)?;
-                answ.answer_data = bytes.to_vec();
+                answ.answer_data = ans_bytes.to_vec();
             }
             _ => {
                 // TODO: avoid a copy here somehow?
-                answ.answer_data = bytes[start..len].to_vec();
+                answ.answer_data = ans_bytes[start..len].to_vec();
             }
         }
         Ok((answ, len))
@@ -211,22 +225,23 @@ impl DnsDecodable for DnsAnswer {
 }
 
 impl DnsDecodable for NbnsAnswer {
-    fn decode(bytes: &[u8]) -> Result<(NbnsAnswer, usize)> {
+    fn decode(bytes: &[u8], start: usize) -> Result<(NbnsAnswer, usize)> {
         // Get query name string of len bytes[0]
-        let qname_len = bytes[0] as usize;
-        let query_name = std::str::from_utf8(&bytes[1..qname_len])?.to_owned();
+        let nbytes = &bytes[start..];
+        let qname_len = nbytes[0] as usize;
+        let query_name = std::str::from_utf8(&nbytes[1..qname_len])?.to_owned();
 
         // Deserialize standard DNS fields
-        let dns_fields: DnsAnswer = serializer().deserialize(&bytes[(qname_len + 2)..(qname_len + 12)])?;
+        let dns_fields: DnsAnswer = serializer().deserialize(&nbytes[(qname_len + 2)..(qname_len + 12)])?;
 
-        let num_names = bytes[qname_len + 12] as usize;
+        let num_names = nbytes[qname_len + 12] as usize;
         let mut names: Vec<String> = vec![];
         let mut hostname: String = "None".to_owned();
 
         for i in 0..num_names {
             let start = (qname_len + 13) + i * 18;
             let end = qname_len + 13 + (i + 1) * 16;
-            let name_bytes = &bytes[start..end];
+            let name_bytes = &nbytes[start..end];
             match std::str::from_utf8(name_bytes) {
                 Ok(name_str) => {
                     names.push(name_str.trim().to_owned());
@@ -269,7 +284,7 @@ mod test {
             0x01
         ];
 
-        let (question, len) = DnsQuestion::decode(bytes).expect("convert failed");
+        let (question, len) = DnsQuestion::decode(bytes, 0).expect("convert failed");
 
         assert_eq!(question.name, "_spotify-connect._tcp.local");
         assert_eq!(len, 33);
@@ -283,7 +298,7 @@ mod test {
             0xc0, 0x0c
         ];
 
-        let (answ, len) = DnsAnswer::decode(bytes).expect("convert failed");
+        let (answ, len) = DnsAnswer::decode(bytes, 0).expect("convert failed");
 
         assert_eq!(answ.ptr_offset, 0x00c);
         assert_eq!(answ.qtype, DnsQuestionType::PTR);
@@ -318,7 +333,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00
         ];
 
-        let (answer, _) = NbnsAnswer::decode(ans_bytes).unwrap();
+        let (answer, _) = NbnsAnswer::decode(ans_bytes, 0).unwrap();
         assert_eq!(answer.hostname, "NJD-SURFACE");
         assert_eq!(answer.names[2], "WORKGROUP");
     }
@@ -333,11 +348,32 @@ mod test {
             0x00, 0x0a, 0x00, 0x04, 0xc0, 0xa8, 0x00, 0x15
         ];
 
-        let (answer, _) = DnsAnswer::decode(addn_bytes).unwrap();
+        let (answer, _) = DnsAnswer::decode(addn_bytes, 0).unwrap();
         let expected: Vec<u8> = vec![0xc0, 0xa8, 0x00, 0x15];
         assert_eq!(answer.qtype, DnsQuestionType::A);
         assert_eq!(answer.answer_data, expected);
         assert_eq!(format!("{}", answer), "192.168.0.21");
+    }
+
+    #[test]
+    fn test_decode_label() {
+        let bytes: &[u8] = &[
+            0x00, 0x01, 0x84, 0x00, 0x00, 0x01, 0x00, 0x01,
+            0x00, 0x00, 0x00, 0x06, 0x08, 0x5f, 0x61, 0x69,
+            0x72, 0x70, 0x6f, 0x72, 0x74, 0x04, 0x5f, 0x74,
+            0x63, 0x70, 0x05, 0x6c, 0x6f, 0x63, 0x61, 0x6c,
+            0x00, 0x00, 0x0c, 0x00, 0x01, 0xc0, 0x0c, 0x00,
+            0x0c, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00,
+            0x06, 0x03, 0x4d, 0x42, 0x52, 0xc0, 0x0c,
+        ];
+
+        let (name, len) = decode_label(bytes, 37).unwrap();
+        assert_eq!(name, "_airport._tcp.local");
+        assert_eq!(2, len);
+
+        let (name2, len2) = decode_label(bytes, 49).unwrap();
+        assert_eq!(name2, "MBR._airport._tcp.local");
+        assert_eq!(6, len2);
     }
 
 
