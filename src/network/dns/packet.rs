@@ -17,7 +17,7 @@ pub struct DnsPacketHeader {
     n_qs: u16,
     n_answ: u16,
     n_auth: u16,
-    n_addn: u16,
+    pub n_addn: u16,
 }
 
 impl Default for DnsPacketHeader {
@@ -41,6 +41,7 @@ pub struct DnsPacket {
     pub questions: Vec<DnsQuestion>,
     pub qsizes: Vec<usize>,
     pub answers: Vec<DnsAnswer>,
+    pub addn_records: Vec<DnsAnswer>,
 }
 
 impl Default for DnsPacket {
@@ -51,6 +52,7 @@ impl Default for DnsPacket {
             questions: vec![],
             qsizes: vec![],
             answers: vec![],
+            addn_records: vec![],
         }
     }
 }
@@ -66,6 +68,7 @@ impl DnsPacket {
             questions: vec![],
             qsizes: vec![],
             answers: vec![],
+            addn_records: vec![],
         }
     }
 
@@ -110,6 +113,7 @@ impl DnsPacket {
         let mut idx = 12;
         for _ in 0..packet.header.n_qs {
             let (q, sz) =  DnsQuestion::decode(&bytes[idx..])?;
+            // TODO: need to store references to the questions
             packet.questions.push(q);
             idx += sz;
         }
@@ -117,6 +121,13 @@ impl DnsPacket {
         for _ in 0..packet.header.n_answ {
             let (a, sz) =  DnsAnswer::decode(&bytes[idx..])?;
             packet.answers.push(a);
+            idx += sz;
+        }
+
+        // Decode aditional answers
+        for _ in 0..packet.header.n_addn {
+            let (a, sz) = DnsAnswer::decode(&bytes[idx..])?;
+            packet.addn_records.push(a);
             idx += sz;
         }
 
@@ -289,20 +300,48 @@ mod tests {
             0xc0, 0x49, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
             0x00, 0x0a, 0x00, 0x04, 0xc0, 0xa8, 0x00, 0x12,
             0xc0, 0x49, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
-            0x00, 0x0a, 0x00, 0x04, 0xa9, 0xfe, 0x7d, 0x3d
+            0x00, 0x0a, 0x00, 0x04, 0xa9, 0xfe, 0x7d, 0x3d,
         ];
 
         let (packet, _) = DnsPacket::decode(bytes).expect("decode failed");
 
         assert_eq!(packet.header.n_qs, 1);
         assert_eq!(packet.header.n_answ, 1);
+        assert_eq!(packet.header.n_addn, 6);
 
         let q = &packet.questions[0];
         assert_eq!(q.name, "_airport._tcp.local");
         assert_eq!(q.qtype, DnsQuestionType::PTR);
 
         let a = &packet.answers[0];
-        assert_eq!(a.hostname, "MBR");
+        assert_eq!(format!("{}", a), "MBR");
         assert_eq!(a.qtype, DnsQuestionType::PTR);
+
+        let a = &packet.addn_records[0];
+        assert_eq!(a.qtype, DnsQuestionType::SRV);
+        assert_eq!(format!("{}", a), "TODO: SRV");
+
+        let a = &packet.addn_records[1];
+        assert_eq!(a.qtype, DnsQuestionType::TXT);
+        let txtval = "waMA=64-A5-C3-5F-21-11,raMA=64-A5-C3-6A-C2-F7,\
+                    raM2=64-A5-C3-6A-C2-F6,raNm=doublebubble,raCh=36,rCh2=6,raSt=0,\
+                    raNA=0,syFl=0x8A0C,syAP=120,syVs=7.9.1,srcv=79100.2,bjSd=33";
+        assert_eq!(format!("{}", a), txtval);
+
+        let a = &packet.addn_records[2];
+        assert_eq!(a.qtype, DnsQuestionType::TXT);
+        assert_eq!(format!("{}", a), "model=AirPort7,120");
+
+        let a = &packet.addn_records[3];
+        assert_eq!(a.qtype, DnsQuestionType::AAAA);
+        assert_eq!(format!("{}", a), "fe80::66a5:c3ff:fe5f:2111");
+
+        let a = &packet.addn_records[4];
+        assert_eq!(a.qtype, DnsQuestionType::A);
+        assert_eq!(format!("{}", a), "192.168.0.18");
+
+        let a = &packet.addn_records[5];
+        assert_eq!(a.qtype, DnsQuestionType::A);
+        assert_eq!(format!("{}", a), "169.254.125.61");
     }
 }

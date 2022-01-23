@@ -39,6 +39,7 @@ use crate::service::service::build_service_query_packet;
 use crate::network::dns::{
     dns_udp_transact,
     packet::DnsPacket,
+    query::DnsQuestionType,
 };
 use crate::service::service_list::DEFAULT_SERVICES;
 
@@ -129,7 +130,20 @@ fn main() {
                 let mut packets: Vec<DnsPacket> = vec![];
                 dns_udp_transact(socket_addr, &mut packet, &mut packets).expect("mDNS query failed");
                 for packet in packets {
-                    println!("Answer: {}.{}", packet.answers[0].hostname, packet.questions[0].name);
+                    for ans in packet.answers {
+                        match ans.qtype {
+                            DnsQuestionType::PTR => {
+                                println!("Answer: {}.{}", ans, packet.questions[0].name);
+                            },
+                            _ => {
+                                println!("{:?}: {}", ans.qtype, ans);
+                            }
+                        }
+                    }
+
+                    for ans in packet.addn_records {
+                        println!("Addtional {:?} record: {}", ans.qtype, ans);
+                    }
                 }
                 exit(0)
             },

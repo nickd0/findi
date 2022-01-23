@@ -66,6 +66,7 @@ pub fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, rcv_pa
             Ok((sz, _)) => {
                 match DnsPacket::decode(&buf[0..sz]) {
                     Ok((packet, _)) => {
+                        println!("aditional: {}", packet.header.n_addn);
                         rcv_packets.push(packet);
                     },
                     Err(_) => {}

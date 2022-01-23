@@ -70,13 +70,15 @@ impl Host {
         // Then NBNS NBSTAT query if fails
         match reverse_dns_lookup(ip, DnsQuestionType::PTR) {
             Some(answer) => {
-                host.host_name = Some(Ok(answer.hostname));
+                let hostname = format!("{}", answer);
+                host.host_name = Some(Ok(hostname));
                 host.res_type = Some(HostResolutionType::MDNS)
             },
             None => {
                 match reverse_dns_lookup(ip, DnsQuestionType::NBSTAT) {
                     Some(answer) =>{
-                        host.host_name = Some(Ok(answer.hostname));
+                        let hostname = format!("{}", answer);
+                        host.host_name = Some(Ok(hostname));
                         host.res_type = Some(HostResolutionType::NBNS)
                     },
                     None => host.host_name = Some(Err("Reverse lookup failed".to_owned()))

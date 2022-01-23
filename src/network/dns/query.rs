@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use serde_repr::*;
 use anyhow::{self, Result};
 
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
+use std::convert::TryInto;
+use std::fmt;
 use std::str;
 use std::iter::Iterator;
 
@@ -16,16 +18,23 @@ use std::iter::Iterator;
 #[derive(Serialize_repr, Deserialize_repr, Eq, PartialEq, Debug)]
 #[repr(u16)]
 pub enum DnsQuestionType {
+    A = 0x01,
     PTR = 0x0C,
-    ATYPE = 0x01,
-    NBSTAT = 0x21
+    TXT = 0x10,
+    AAAA = 0x1C,
+    SRV = 0x21,
+    // FIXME: this is not compatible with the others
+    NBSTAT = 0x00,
 }
 
 impl DnsQuestionType {
     fn contains_value(val: u16) -> bool {
         match val {
+            x if x == DnsQuestionType::A as u16 => true,
             x if x == DnsQuestionType::PTR as u16 => true,
-            x if x == DnsQuestionType::ATYPE as u16 => true,
+            x if x == DnsQuestionType::TXT as u16 => true,
+            x if x == DnsQuestionType::AAAA as u16 => true,
+            x if x == DnsQuestionType::SRV as u16 => true,
             x if x == DnsQuestionType::NBSTAT as u16 => true,
             _ => false
         }
@@ -87,7 +96,44 @@ pub struct DnsAnswer {
     pub datalen: u16,
 
     #[serde(skip_deserializing, skip_serializing)]
-    pub hostname: String,
+    pub answer_data: Vec<u8>,
+}
+
+// TODO: implement others
+impl fmt::Display for DnsAnswer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return match self.qtype {
+            DnsQuestionType::PTR => {
+                // TODO: don't unwrap hwere.
+                let (rec_str, _) = decode_ptr_record(&self.answer_data, 0xc0).unwrap();
+                write!(f, "{}", rec_str)
+            },
+            DnsQuestionType::A => {
+                // TODO: don't unwrap hwere.
+                let bytes: [u8; 4] = self.answer_data[..4].try_into().unwrap();
+                let addr = Ipv4Addr::from(bytes);
+                write!(f, "{}", addr)
+            },
+            DnsQuestionType::AAAA => {
+                // TODO: don't unwrap hwere.
+                let bytes: [u8; 16] = self.answer_data[..].try_into().unwrap();
+                let addr = Ipv6Addr::from(bytes);
+                write!(f, "{}", addr)
+            },
+            DnsQuestionType::TXT => {
+                let ans_str = str::from_utf8(&self.answer_data[1..]).unwrap();
+                write!(f, "{}", ans_str)
+            },
+            DnsQuestionType::SRV => {
+                // TODO: add target with offset calculation
+                let priority = ((self.answer_data[0] as u16) << 8) | self.answer_data[1] as u16;
+                let weight = ((self.answer_data[2] as u16) << 8) | self.answer_data[3] as u16;
+                let port = ((self.answer_data[4] as u16) << 8) | self.answer_data[5] as u16;
+                write!(f, "Priority: {}, Weight: {}, Port: {}", priority, weight, port)
+            },
+            _ => write!(f, "TODO: {:?}", self.qtype)
+        }
+    }
 }
 
 pub struct NbnsAnswer {
@@ -99,7 +145,7 @@ pub struct NbnsAnswer {
     pub hostname: String,
 }
 
-fn decode_ptr_record(bytes: &[u8], terminator: u8) -> Result<(String, usize)> {
+fn decode_ptr_record(bytes: &Vec<u8>, terminator: u8) -> Result<(String, usize)> {
     let mut name_buf = vec![];
     let mut idx = 0;
     let mut byte = &bytes[idx];
@@ -120,7 +166,7 @@ fn decode_ptr_record(bytes: &[u8], terminator: u8) -> Result<(String, usize)> {
 
 impl DnsDecodable for DnsQuestion {
     fn decode(bytes: &[u8]) -> Result<(DnsQuestion, usize)> {
-        let (name, len) = decode_ptr_record(bytes, 0)?;
+        let (name, len) = decode_ptr_record(&bytes.to_vec(), 0)?;
         let mut query: DnsQuestion = serializer()
             .deserialize(&bytes[(len + 1)..(len + 5)])?;
         query.name = name;
@@ -128,12 +174,15 @@ impl DnsDecodable for DnsQuestion {
     }
 }
 
+
 impl DnsDecodable for DnsAnswer {
     fn decode(bytes: &[u8]) -> Result<(DnsAnswer, usize)> {
         let mut name_buf: Vec<u8> = vec![];
         let mut idx = 0;
         let mut chk_byte: u16;
         // build string until we see a valid qtype https://www.rfc-editor.org/rfc/rfc1035
+        // TODO: add NAME field build from this first chunk of bytes (and using the pointer 0xc0)
+        // see https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4
         loop {
             name_buf.push(bytes[idx]);
             chk_byte = u16::from_be_bytes([bytes[idx], bytes[idx + 1]]);
@@ -147,19 +196,15 @@ impl DnsDecodable for DnsAnswer {
         // answ.ptr_offset = answ.ptr_offset & 0xfff;
         let len = start + answ.datalen as usize;
         match answ.qtype {
-            DnsQuestionType::PTR => {
-                let (name, _) = decode_ptr_record(
-                    &bytes[start..len],
-                    0xc0
-                )?;
-                answ.hostname = name;
-            },
             DnsQuestionType::NBSTAT => {
                 // TODO: more detailed reporting of NBNS queries
-                let (nbans, _) = NbnsAnswer::decode(bytes)?;
-                answ.hostname = nbans.hostname;
+                // let (nbans, _) = NbnsAnswer::decode(bytes)?;
+                answ.answer_data = bytes.to_vec();
             }
-            _ => {}
+            _ => {
+                // TODO: avoid a copy here somehow?
+                answ.answer_data = bytes[start..len].to_vec();
+            }
         }
         Ok((answ, len))
     }
@@ -243,7 +288,7 @@ mod test {
         assert_eq!(answ.ptr_offset, 0x00c);
         assert_eq!(answ.qtype, DnsQuestionType::PTR);
         assert_eq!(answ.ttl, 10);
-        assert_eq!(answ.hostname, "MBR");
+        assert_eq!(format!("{}", answ), "MBR");
         assert_eq!(len, 18);
     }
 
@@ -277,5 +322,23 @@ mod test {
         assert_eq!(answer.hostname, "NJD-SURFACE");
         assert_eq!(answer.names[2], "WORKGROUP");
     }
+
+    #[test]
+    pub fn test_tryfrom_dns_addn_answer_bytes() {
+        // Test decoding an additional answer
+
+        // A record bytes
+        let addn_bytes: &[u8] = &[
+            0xc0, 0x5c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+            0x00, 0x0a, 0x00, 0x04, 0xc0, 0xa8, 0x00, 0x15
+        ];
+
+        let (answer, _) = DnsAnswer::decode(addn_bytes).unwrap();
+        let expected: Vec<u8> = vec![0xc0, 0xa8, 0x00, 0x15];
+        assert_eq!(answer.qtype, DnsQuestionType::A);
+        assert_eq!(answer.answer_data, expected);
+        assert_eq!(format!("{}", answer), "192.168.0.21");
+    }
+
 
 }
