@@ -339,17 +339,18 @@ mod test {
     }
 
     #[test]
-    pub fn test_tryfrom_dns_addn_answer_bytes() {
+    fn test_tryfrom_dns_addn_answer_bytes() {
         // Test decoding an additional answer
 
         // A record bytes
         let addn_bytes: &[u8] = &[
-            0xc0, 0x5c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+            0x01, 0x66, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
             0x00, 0x0a, 0x00, 0x04, 0xc0, 0xa8, 0x00, 0x15
         ];
 
         let (answer, _) = DnsAnswer::decode(addn_bytes, 0).unwrap();
         let expected: Vec<u8> = vec![0xc0, 0xa8, 0x00, 0x15];
+        assert_eq!(&answer.name, "f");
         assert_eq!(answer.qtype, DnsQuestionType::A);
         assert_eq!(answer.answer_data, expected);
         assert_eq!(format!("{}", answer), "192.168.0.21");

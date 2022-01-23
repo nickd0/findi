@@ -228,7 +228,7 @@ mod tests {
     fn test_netbios_dns_packet_build() {
         let tid = 0xF00D;
 
-        let ip =Ipv4Addr::new(10, 10, 0, 10);
+        let ip = Ipv4Addr::new(10, 10, 0, 10);
         let mut packet = DnsPacket::new(tid, ip);
         let nb_q = DnsQuestion::build_rlookup(ip, DnsQuestionType::NBSTAT);
         packet.add_q(nb_q);
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     pub fn test_tryfrom_packet_bytes() {
-        let bytes: &[u8] = &[0, 1, 132, 0, 0, 0, 0, 0, 0, 0, 0, 6];
+        let bytes: &[u8] = &[0, 1, 132, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let (packet, _) = DnsPacket::decode(bytes).unwrap();
         let header = packet.header;
 
@@ -248,7 +248,7 @@ mod tests {
         assert_eq!(header.n_qs, 0);
         assert_eq!(header.n_answ, 0);
         assert_eq!(header.n_auth, 0);
-        assert_eq!(header.n_addn, 6);
+        assert_eq!(header.n_addn, 0);
     }
 
     #[test]
@@ -318,7 +318,7 @@ mod tests {
 
         let a = &packet.addn_records[0];
         assert_eq!(a.qtype, DnsQuestionType::SRV);
-        assert_eq!(format!("{}", a), "TODO: SRV");
+        assert_eq!(format!("{}", a), "Priority: 0, Weight: 0, Port: 5009");
 
         let a = &packet.addn_records[1];
         assert_eq!(a.qtype, DnsQuestionType::TXT);
