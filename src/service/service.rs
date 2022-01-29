@@ -1,11 +1,17 @@
 // mDNS service implementation.
 
+use crate::state::{
+	actions::AppAction,
+	store::SharedAppStateStore,
+};
 use crate::network::dns::{
 	packet::DnsPacket,
-	query::DnsQuestion
+	query::{DnsQuestion},
+	dns_udp_transact,
 };
 
 use std::fmt;
+use std::thread;
 use std::net::{SocketAddr, Ipv4Addr};
 
 pub static MDNS_LOOKUP_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::new(224, 0, 0, 251), 5353);
@@ -25,6 +31,32 @@ impl Service {
 			subdomain,
 			ip: None,
 			port: None,
+		}
+	}
+
+	// pub fn add_packet(&mut self, packet: DnsPacket) {
+
+	// }
+}
+
+#[derive(Clone)]
+pub struct ServiceDevice {
+	pub svc_name: &'static str,
+	pub packet: Option<DnsPacket>,
+}
+
+impl ServiceDevice {
+	pub fn new(name: &'static str) -> ServiceDevice {
+		ServiceDevice {
+			svc_name: name,
+			packet: None,
+		}
+	}
+
+	pub fn build_from_dns(svc_name: &'static str, packet: DnsPacket) -> ServiceDevice {
+		ServiceDevice {
+			svc_name,
+			packet: Some(packet),
 		}
 	}
 }
@@ -47,6 +79,25 @@ pub fn build_service_query_packet(svcs: &Vec<Service>) -> (SocketAddr, DnsPacket
 		packet.add_q((*svc).into())
 	}
 	(SocketAddr::from(MDNS_LOOKUP_ADDR), packet)
+}
+
+pub fn dispatch_service_search(store: SharedAppStateStore, name: &'static str, svcs: &'static Vec<Service>) {
+	thread::spawn(move || {
+		let (socket_addr, mut packet) = build_service_query_packet(&svcs);
+		let mut packets: Vec<DnsPacket> = vec![];
+		// TODO: dont expect here
+		dns_udp_transact(socket_addr, &mut packet, &mut packets).expect("mDNS query failed");
+
+		let mut lstore = store.lock().unwrap();
+		for packet in packets {
+			lstore.dispatch(
+				AppAction::AddService(
+					ServiceDevice::build_from_dns(name, packet)
+				)
+			)
+		}
+
+	});
 }
 
 #[cfg(test)]

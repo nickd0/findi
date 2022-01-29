@@ -134,36 +134,36 @@ fn main() {
     let hosts: Vec<Ipv4Addr>;
     let query: String;
 
-    if let Some(svc_name) = matches.value_of("service_scan") {
-        match &DEFAULT_SERVICES.get(svc_name) {
-            Some(svcs) => {
-                let (socket_addr, mut packet) = build_service_query_packet(svcs);
-                let mut packets: Vec<DnsPacket> = vec![];
-                dns_udp_transact(socket_addr, &mut packet, &mut packets).expect("mDNS query failed");
-                for packet in packets {
-                    for ans in packet.answers {
-                        match ans.qtype {
-                            DnsQuestionType::PTR => {
-                                println!("Answer: {}.{}", ans, packet.questions[0].name);
-                            },
-                            _ => {
-                                println!("{:?}: {}", ans.qtype, ans);
-                            }
-                        }
-                    }
+    // if let Some(svc_name) = matches.value_of("service_scan") {
+    //     match &DEFAULT_SERVICES.get(svc_name) {
+    //         Some(svcs) => {
+    //             let (socket_addr, mut packet) = build_service_query_packet(svcs);
+    //             let mut packets: Vec<DnsPacket> = vec![];
+    //             dns_udp_transact(socket_addr, &mut packet, &mut packets).expect("mDNS query failed");
+    //             for packet in packets {
+    //                 for ans in packet.answers {
+    //                     match ans.qtype {
+    //                         DnsQuestionType::PTR => {
+    //                             println!("Answer: {}.{}", ans, packet.questions[0].name);
+    //                         },
+    //                         _ => {
+    //                             println!("{:?}: {}", ans.qtype, ans);
+    //                         }
+    //                     }
+    //                 }
 
-                    for ans in packet.addn_records {
-                        println!("Addtional {:?} record: {}", ans.qtype, ans);
-                    }
-                }
-                exit(0)
-            },
-            None => {
-                println!("No service groups found for {}", svc_name);
-                exit(1)
-            }
-        }
-    }
+    //                 for ans in packet.addn_records {
+    //                     println!("Addtional {:?} record: {}", ans.qtype, ans);
+    //                 }
+    //             }
+    //             exit(0)
+    //         },
+    //         None => {
+    //             println!("No service groups found for {}", svc_name);
+    //             exit(1)
+    //         }
+    //     }
+    // }
 
     if let Some(input) = matches.value_of("custom_cidr") {
         match input_parse(&input) {
@@ -218,8 +218,6 @@ fn main() {
     store.dispatch(AppAction::SetHostSearchRun(true));
 
     let shared_store = Arc::new(Mutex::new(store));
-
-    init_host_search(shared_store.clone());
 
     let run_page = match matches.subcommand() {
         ("host-scan", _) => Page::MainPage,

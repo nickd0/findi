@@ -157,8 +157,14 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 
     f.render_widget(input, first_row[0]);
 
+
+    let filter_str = match lstore.state.search_filter_opt {
+        SearchFilterOption::ShowAll => "Show all".to_owned(),
+        SearchFilterOption::ShowFound => "Show resolved only".to_owned(),
+        SearchFilterOption::HasPort(idx) => format!("Port {} open", lstore.state.port_query[idx])
+    };
     // Render filter options
-    draw_search_filter(&*lstore, first_row[1], f, "Filter/Sort");
+    draw_search_filter(&*lstore, first_row[1], f, "Filter/Sort", &filter_str, PageContent::SearchFilters);
 
     if let PageContent::QueryInput = curr_focus {
         f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1)
@@ -520,7 +526,8 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
 
                 _ => {}
             }
-        }
+        },
+        _ => {}
     }
 }
 

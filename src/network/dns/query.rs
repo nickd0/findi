@@ -17,7 +17,7 @@ const PTR_BYTE: u8 = 0xc0;
 
 // A PTR record is used for reverse DNS lookup
 // https://www.cloudflare.com/learning/dns/dns-records/dns-ptr-record/
-#[derive(Serialize_repr, Deserialize_repr, Eq, PartialEq, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, Eq, PartialEq, Debug, Clone)]
 #[repr(u16)]
 pub enum DnsQuestionType {
     A = 0x01,
@@ -30,13 +30,13 @@ pub enum DnsQuestionType {
 }
 
 
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Clone)]
 #[repr(u16)]
 pub enum DnsQuestionClass {
     IN = 0x01,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DnsQuestion {
     #[serde(skip_serializing, skip_deserializing)]
     pub name: String,
@@ -74,7 +74,7 @@ impl DnsQuestion {
 
 // DnsAnswer
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DnsAnswer {
     #[serde(skip_deserializing, skip_serializing)]
     pub ptr_offset: u16,

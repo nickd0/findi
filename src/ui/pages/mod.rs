@@ -15,6 +15,13 @@ pub enum Page {
     ServiceScanPage,
 }
 
+pub fn setup_page(curr_page: &Page, store: &mut AppStateStore) {
+    match curr_page {
+        Page::ServiceScanPage => service_page::setup_page(store),
+        _ => {},
+    }
+}
+
 pub fn draw_page<B: Backend>(curr_page: &Page, store: SharedAppStateStore, f: &mut Frame<B>) {
     match curr_page {
         Page::MainPage => main_page::draw_main_page(store, f),
@@ -25,7 +32,7 @@ pub fn draw_page<B: Backend>(curr_page: &Page, store: SharedAppStateStore, f: &m
 pub fn handle_page_events(curr_page: &Page, key: Key, store: &mut AppStateStore, store_mtx: SharedAppStateStore) {
     match curr_page {
         Page::MainPage => main_page::handle_main_page_event(key, store, store_mtx),
-        Page::ServiceScanPage => {},
+        Page::ServiceScanPage => service_page::handle_page_event(key, store, store_mtx),
     }
 }
 
@@ -34,6 +41,7 @@ pub enum PageContent {
     QueryInput,
     HostTable,
     SearchFilters,
+    ServiceSelect,
 }
 
 impl Default for PageContent {

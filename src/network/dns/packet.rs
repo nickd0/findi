@@ -10,7 +10,7 @@ use anyhow::{self, Result};
 
 use std::net::Ipv4Addr;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DnsPacketHeader {
     trans_id: u16,
     q_flags: u16,
@@ -33,6 +33,7 @@ impl Default for DnsPacketHeader {
     }
 }
 
+#[derive(Clone)]
 pub struct DnsPacket {
     pub header: DnsPacketHeader,
 

@@ -190,6 +190,17 @@ impl Reducer<AppAction> for AppReducer {
                 state.app_config.tick_len = tick_len;
                 state
             },
+
+            AppAction::SelectServiceGroup(idx) => {
+                state.selected_service_group = idx;
+                state
+            }
+
+            AppAction::AddService(svc) => {
+                state.found_svcs.push(svc);
+                state
+            }
+
             _ => state
         }
     }

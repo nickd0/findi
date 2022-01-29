@@ -9,7 +9,7 @@ pub mod notification;
 pub mod pages;
 pub mod event;
 
-use pages::{Page, draw_page, handle_page_events};
+use pages::{Page, draw_page, handle_page_events, setup_page};
 
 use event::{Event, Key};
 use crate::state::store::SharedAppStateStore;
@@ -46,6 +46,8 @@ pub fn ui_loop(store: SharedAppStateStore, curr_page: Page) -> Result<()> {
     let evt_stream = event::async_event_reader(tick_len);
 
     terminal.clear()?;
+
+    setup_page(&curr_page, &mut store.lock().unwrap());
 
     while GLOBAL_RUN.load(Ordering::Acquire) {
         // Update the stateful table from application state

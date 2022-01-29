@@ -1,6 +1,7 @@
 use tui::widgets::TableState;
 
 use crate::network::host::{HostVec, Host};
+use crate::service::service::ServiceDevice;
 use crate::ui::components::search_filter::SearchFilterOption;
 use crate::ui::{
     pages::PageContent,
@@ -31,6 +32,9 @@ pub struct ApplicationState {
     pub app_config: AppConfig,
     // TODO: should ui focus be part of application state?
     // pub focus: UiComponent
+
+    pub selected_service_group: usize,
+    pub found_svcs: Vec<ServiceDevice>,
 }
 
 // State convenience methods
