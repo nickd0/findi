@@ -1,13 +1,13 @@
 // mDNS service implementation.
 
 use crate::state::{
-	actions::AppAction,
-	store::SharedAppStateStore,
+    actions::AppAction,
+    store::SharedAppStateStore,
 };
 use crate::network::dns::{
-	packet::DnsPacket,
-	query::{DnsQuestion},
-	dns_udp_transact,
+    packet::DnsPacket,
+    query::{DnsQuestion},
+    dns_udp_transact,
 };
 
 use std::fmt;
@@ -25,46 +25,46 @@ pub struct Service {
 }
 
 impl Service {
-	pub fn new(svc_name: &'static str, subdomain: &'static str) -> Service {
-		Service {
-			svc_name,
-			subdomain,
-			ip: None,
-			port: None,
-		}
-	}
+    pub fn new(svc_name: &'static str, subdomain: &'static str) -> Service {
+        Service {
+            svc_name,
+            subdomain,
+            ip: None,
+            port: None,
+        }
+    }
 
-	// pub fn add_packet(&mut self, packet: DnsPacket) {
+    // pub fn add_packet(&mut self, packet: DnsPacket) {
 
-	// }
+    // }
 }
 
 #[derive(Clone)]
 pub struct ServiceDevice {
-	pub svc_name: &'static str,
-	pub packet: Option<DnsPacket>,
+    pub svc_name: &'static str,
+    pub packet: Option<DnsPacket>,
 }
 
 impl ServiceDevice {
-	pub fn new(name: &'static str) -> ServiceDevice {
-		ServiceDevice {
-			svc_name: name,
-			packet: None,
-		}
-	}
+    pub fn new(name: &'static str) -> ServiceDevice {
+        ServiceDevice {
+            svc_name: name,
+            packet: None,
+        }
+    }
 
-	pub fn build_from_dns(svc_name: &'static str, packet: DnsPacket) -> ServiceDevice {
-		ServiceDevice {
-			svc_name,
-			packet: Some(packet),
-		}
-	}
+    pub fn build_from_dns(svc_name: &'static str, packet: DnsPacket) -> ServiceDevice {
+        ServiceDevice {
+            svc_name,
+            packet: Some(packet),
+        }
+    }
 }
 
 impl Into<DnsQuestion> for Service {
     fn into(self) -> DnsQuestion {
-		DnsQuestion::new(format!("{}._tcp.local", self.subdomain))
-	}
+        DnsQuestion::new(format!("{}._tcp.local", self.subdomain))
+    }
 }
 
 impl fmt::Display for Service {
@@ -74,61 +74,61 @@ impl fmt::Display for Service {
 }
 
 pub fn build_service_query_packet(svcs: &Vec<Service>) -> (SocketAddr, DnsPacket) {
-	let mut packet = DnsPacket::new(0x01, MDNS_LOOKUP_ADDR.0);
-	for svc in svcs {
-		packet.add_q((*svc).into())
-	}
-	(SocketAddr::from(MDNS_LOOKUP_ADDR), packet)
+    let mut packet = DnsPacket::new(0x01, MDNS_LOOKUP_ADDR.0);
+    for svc in svcs {
+        packet.add_q((*svc).into())
+    }
+    (SocketAddr::from(MDNS_LOOKUP_ADDR), packet)
 }
 
 pub fn dispatch_service_search(store: SharedAppStateStore, name: &'static str, svcs: &'static Vec<Service>) {
-	thread::spawn(move || {
-		let (socket_addr, mut packet) = build_service_query_packet(&svcs);
-		let mut packets: Vec<DnsPacket> = vec![];
-		// TODO: dont expect here
-		dns_udp_transact(socket_addr, &mut packet, &mut packets).expect("mDNS query failed");
+    thread::spawn(move || {
+        let (socket_addr, mut packet) = build_service_query_packet(&svcs);
+        let mut packets: Vec<DnsPacket> = vec![];
+        // TODO: dont expect here
+        dns_udp_transact(socket_addr, &mut packet, &mut packets).expect("mDNS query failed");
 
-		let mut lstore = store.lock().unwrap();
-		for packet in packets {
-			lstore.dispatch(
-				AppAction::AddService(
-					ServiceDevice::build_from_dns(name, packet)
-				)
-			)
-		}
+        let mut lstore = store.lock().unwrap();
+        for packet in packets {
+            lstore.dispatch(
+                AppAction::AddService(
+                    ServiceDevice::build_from_dns(name, packet)
+                )
+            )
+        }
 
-	});
+    });
 }
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	#[test]
-	pub fn test_service_question_into() {
-		let svc = Service::new("Test service", "_test-service.sub");
-		let q: DnsQuestion = svc.into();
-		assert_eq!(q.name, "_test-service.sub._tcp.local");
-	}
+    #[test]
+    pub fn test_service_question_into() {
+        let svc = Service::new("Test service", "_test-service.sub");
+        let q: DnsQuestion = svc.into();
+        assert_eq!(q.name, "_test-service.sub._tcp.local");
+    }
 
-	#[test]
-	pub fn test_build_service_query_packet() {
-		// Encoded _ipp-tls._tcp.local
-		let addr_bts: [u8; 25] = [
-			0x08, 0x5f, 0x69, 0x70, 0x70, 0x2d, 0x74, 0x6c,
-			0x73, 0x04, 0x5f, 0x74, 0x63, 0x70, 0x05, 0x6c,
-			0x6f, 0x63, 0x61, 0x6c, 0x00, 0x00, 0x0c, 0x00,
-			0x01
-		];
-		let svcs = vec![
-			Service::new("Test svc", "_ipp-tls")
-		];
-		let (_, mut packet) = build_service_query_packet(&svcs);
-		let bts = packet.as_bytes().unwrap();
+    #[test]
+    pub fn test_build_service_query_packet() {
+        // Encoded _ipp-tls._tcp.local
+        let addr_bts: [u8; 25] = [
+            0x08, 0x5f, 0x69, 0x70, 0x70, 0x2d, 0x74, 0x6c,
+            0x73, 0x04, 0x5f, 0x74, 0x63, 0x70, 0x05, 0x6c,
+            0x6f, 0x63, 0x61, 0x6c, 0x00, 0x00, 0x0c, 0x00,
+            0x01
+        ];
+        let svcs = vec![
+            Service::new("Test svc", "_ipp-tls")
+        ];
+        let (_, mut packet) = build_service_query_packet(&svcs);
+        let bts = packet.as_bytes().unwrap();
 
-		// Num questions
-		assert_eq!(bts[5], 1);
-		assert_eq!(bts[12..37], addr_bts);
-		
-	}
+        // Num questions
+        assert_eq!(bts[5], 1);
+        assert_eq!(bts[12..37], addr_bts);
+
+    }
 }
