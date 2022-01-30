@@ -16,30 +16,30 @@ pub type HostVec = Vec<Host>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PingType {
-    UDP,
-    TCP
+    Udp,
+    Tcp
 }
 
 impl fmt::Display for PingType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            PingType::UDP => { write!(f, "UDP") },
-            PingType::TCP => { write!(f, "TCP") }
+            PingType::Udp => { write!(f, "UDP") },
+            PingType::Tcp => { write!(f, "TCP") }
         }
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum HostResolutionType {
-    MDNS,
-    NBNS
+    Mdns,
+    Nbns
 }
 
 impl fmt::Display for HostResolutionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            HostResolutionType::MDNS => { write!(f, "Multicast DNS") },
-            HostResolutionType::NBNS => { write!(f, "NetBios Name Service") }
+            HostResolutionType::Mdns => { write!(f, "Multicast DNS") },
+            HostResolutionType::Nbns => { write!(f, "NetBios Name Service") }
         }
     }
 }
@@ -68,18 +68,18 @@ impl Host {
 
         // Perform mDNS reverse lookup
         // Then NBNS NBSTAT query if fails
-        match reverse_dns_lookup(ip, DnsQuestionType::PTR) {
+        match reverse_dns_lookup(ip, DnsQuestionType::Ptr) {
             Some(answer) => {
                 let hostname = format!("{}", answer);
                 host.host_name = Some(Ok(hostname));
-                host.res_type = Some(HostResolutionType::MDNS)
+                host.res_type = Some(HostResolutionType::Mdns)
             },
             None => {
-                match reverse_dns_lookup(ip, DnsQuestionType::NBSTAT) {
+                match reverse_dns_lookup(ip, DnsQuestionType::Nbstat) {
                     Some(answer) =>{
                         let hostname = format!("{}", answer);
                         host.host_name = Some(Ok(hostname));
-                        host.res_type = Some(HostResolutionType::NBNS)
+                        host.res_type = Some(HostResolutionType::Nbns)
                     },
                     None => host.host_name = Some(Err("Reverse lookup failed".to_owned()))
                 }
@@ -105,14 +105,14 @@ impl Host {
     pub fn ping(&mut self) {
         self.ping_res = match udp_ping(self.ip) {
             Ok(t) => {
-                self.ping_type = Some(PingType::UDP);
+                self.ping_type = Some(PingType::Udp);
                 Some(t)
             },
 
             Err(_) => {
                 match tcp_ping(self.ip) {
                     Ok(t) => {
-                        self.ping_type = Some(PingType::TCP);
+                        self.ping_type = Some(PingType::Tcp);
                         self.tcp_ports.insert(TCP_PING_PORT);
                         Some(t)
                     },

@@ -33,10 +33,6 @@ impl Service {
             port: None,
         }
     }
-
-    // pub fn add_packet(&mut self, packet: DnsPacket) {
-
-    // }
 }
 
 #[derive(Clone)]
@@ -46,13 +42,6 @@ pub struct ServiceDevice {
 }
 
 impl ServiceDevice {
-    pub fn new(name: &'static str) -> ServiceDevice {
-        ServiceDevice {
-            svc_name: name,
-            packet: None,
-        }
-    }
-
     pub fn build_from_dns(svc_name: &'static str, packet: DnsPacket) -> ServiceDevice {
         ServiceDevice {
             svc_name,
@@ -61,9 +50,9 @@ impl ServiceDevice {
     }
 }
 
-impl Into<DnsQuestion> for Service {
-    fn into(self) -> DnsQuestion {
-        DnsQuestion::new(format!("{}._tcp.local", self.subdomain))
+impl From<Service> for DnsQuestion {
+    fn from(service: Service) -> DnsQuestion {
+        DnsQuestion::new(format!("{}._tcp.local", service.subdomain))
     }
 }
 
@@ -73,7 +62,7 @@ impl fmt::Display for Service {
     }
 }
 
-pub fn build_service_query_packet(svcs: &Vec<Service>) -> (SocketAddr, DnsPacket) {
+pub fn build_service_query_packet(svcs: &[Service]) -> (SocketAddr, DnsPacket) {
     let mut packet = DnsPacket::new(0x01, MDNS_LOOKUP_ADDR.0);
     for svc in svcs {
         packet.add_q((*svc).into())
@@ -81,7 +70,7 @@ pub fn build_service_query_packet(svcs: &Vec<Service>) -> (SocketAddr, DnsPacket
     (SocketAddr::from(MDNS_LOOKUP_ADDR), packet)
 }
 
-pub fn dispatch_service_search(store: SharedAppStateStore, name: &'static str, svcs: &'static Vec<Service>) {
+pub fn dispatch_service_search(store: SharedAppStateStore, name: &'static str, svcs: &'static [Service]) {
     thread::spawn(move || {
         let (socket_addr, mut packet) = build_service_query_packet(&svcs);
         let mut packets: Vec<DnsPacket> = vec![];

@@ -16,6 +16,7 @@ pub enum Page {
 }
 
 pub fn setup_page(curr_page: &Page, store: &mut AppStateStore) {
+    #[allow(clippy::single_match)]  // Allow this while more pages are added
     match curr_page {
         Page::ServiceScanPage => service_page::setup_page(store),
         _ => {},

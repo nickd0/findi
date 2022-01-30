@@ -89,7 +89,7 @@ impl DnsPacket {
         // TODO: this is being replaced
         for q in &self.questions {
             let qbytes = match q.qtype {
-                DnsQuestionType::PTR => DnsPtrEncoder::encode(&q),
+                DnsQuestionType::Ptr => DnsPtrEncoder::encode(&q),
                 _ => DnsNbstatEncoder::encode(&q),
             };
             let qlen = qbytes.len();
@@ -214,7 +214,7 @@ mod tests {
 
         assert_eq!(packet.header.trans_id, tid);
 
-        let q = DnsQuestion::build_rlookup(ip, DnsQuestionType::PTR);
+        let q = DnsQuestion::build_rlookup(ip, DnsQuestionType::Ptr);
 
         let enc = DnsPtrEncoder::encode(&q);
         println!("enc: {:?}", enc);
@@ -231,7 +231,7 @@ mod tests {
 
         let ip = Ipv4Addr::new(10, 10, 0, 10);
         let mut packet = DnsPacket::new(tid, ip);
-        let nb_q = DnsQuestion::build_rlookup(ip, DnsQuestionType::NBSTAT);
+        let nb_q = DnsQuestion::build_rlookup(ip, DnsQuestionType::Nbstat);
         packet.add_q(nb_q);
 
         assert_eq!(packet.as_bytes().unwrap(), NB_PACKET_BYTES);
@@ -311,29 +311,29 @@ mod tests {
 
         let q = &packet.questions[0];
         assert_eq!(q.name, "_airport._tcp.local");
-        assert_eq!(q.qtype, DnsQuestionType::PTR);
+        assert_eq!(q.qtype, DnsQuestionType::Ptr);
 
         let a = &packet.answers[0];
         assert_eq!(format!("{}", a), "MBR");
-        assert_eq!(a.qtype, DnsQuestionType::PTR);
+        assert_eq!(a.qtype, DnsQuestionType::Ptr);
 
         let a = &packet.addn_records[0];
-        assert_eq!(a.qtype, DnsQuestionType::SRV);
+        assert_eq!(a.qtype, DnsQuestionType::Srv);
         assert_eq!(format!("{}", a), "Priority: 0, Weight: 0, Port: 5009");
 
         let a = &packet.addn_records[1];
-        assert_eq!(a.qtype, DnsQuestionType::TXT);
+        assert_eq!(a.qtype, DnsQuestionType::Txt);
         let txtval = "waMA=64-A5-C3-5F-21-11,raMA=64-A5-C3-6A-C2-F7,\
                     raM2=64-A5-C3-6A-C2-F6,raNm=doublebubble,raCh=36,rCh2=6,raSt=0,\
                     raNA=0,syFl=0x8A0C,syAP=120,syVs=7.9.1,srcv=79100.2,bjSd=33";
         assert_eq!(format!("{}", a), txtval);
 
         let a = &packet.addn_records[2];
-        assert_eq!(a.qtype, DnsQuestionType::TXT);
+        assert_eq!(a.qtype, DnsQuestionType::Txt);
         assert_eq!(format!("{}", a), "model=AirPort7,120");
 
         let a = &packet.addn_records[3];
-        assert_eq!(a.qtype, DnsQuestionType::AAAA);
+        assert_eq!(a.qtype, DnsQuestionType::Aaaa);
         assert_eq!(format!("{}", a), "fe80::66a5:c3ff:fe5f:2111");
 
         let a = &packet.addn_records[4];

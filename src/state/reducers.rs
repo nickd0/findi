@@ -43,9 +43,8 @@ impl Reducer<AppAction> for AppReducer {
             AppAction::SetPortQuery(pquery) => {
                 match pquery {
                     Some(somepq) => {
-                        match parse_portlist(&somepq) {
-                            Ok(ports) => state.port_query = ports,
-                            Err(_) => {}
+                        if let Ok(ports) = parse_portlist(&somepq) {
+                            state.port_query = ports;
                         }
                     },
                     None => state.port_query.clear()

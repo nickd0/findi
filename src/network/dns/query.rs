@@ -21,19 +21,19 @@ const PTR_BYTE: u8 = 0xc0;
 #[repr(u16)]
 pub enum DnsQuestionType {
     A = 0x01,
-    PTR = 0x0C,
-    TXT = 0x10,
-    AAAA = 0x1C,
-    SRV = 0x21,
+    Ptr = 0x0C,
+    Txt = 0x10,
+    Aaaa = 0x1C,
+    Srv = 0x21,
     // FIXME: this is not compatible with the others
-    NBSTAT = 0x00,
+    Nbstat = 0x00,
 }
 
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Clone)]
 #[repr(u16)]
 pub enum DnsQuestionClass {
-    IN = 0x01,
+    In = 0x01,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -49,8 +49,8 @@ impl DnsQuestion {
     pub fn new(name: String) -> DnsQuestion {
         DnsQuestion {
             name,
-            qtype: DnsQuestionType::PTR,
-            qclass: DnsQuestionClass::IN,
+            qtype: DnsQuestionType::Ptr,
+            qclass: DnsQuestionClass::In,
         }        
     }
 
@@ -67,7 +67,7 @@ impl DnsQuestion {
         Self {
             qtype,
             name: addr_str,
-            qclass: DnsQuestionClass::IN,
+            qclass: DnsQuestionClass::In,
         }
     }
 }
@@ -95,7 +95,7 @@ pub struct DnsAnswer {
 impl fmt::Display for DnsAnswer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return match self.qtype {
-            DnsQuestionType::PTR => {
+            DnsQuestionType::Ptr => {
                 // TODO: don't unwrap hwere.
                 let (rec_str, _) = decode_ptr_record(&self.answer_data, 0xc0).unwrap();
                 write!(f, "{}", rec_str)
@@ -106,17 +106,17 @@ impl fmt::Display for DnsAnswer {
                 let addr = Ipv4Addr::from(bytes);
                 write!(f, "{}", addr)
             },
-            DnsQuestionType::AAAA => {
+            DnsQuestionType::Aaaa => {
                 // TODO: don't unwrap hwere.
                 let bytes: [u8; 16] = self.answer_data[..].try_into().unwrap();
                 let addr = Ipv6Addr::from(bytes);
                 write!(f, "{}", addr)
             },
-            DnsQuestionType::TXT => {
+            DnsQuestionType::Txt => {
                 let ans_str = str::from_utf8(&self.answer_data[1..]).unwrap();
                 write!(f, "{}", ans_str)
             },
-            DnsQuestionType::SRV => {
+            DnsQuestionType::Srv => {
                 // TODO: add target with offset calculation
                 let priority = ((self.answer_data[0] as u16) << 8) | self.answer_data[1] as u16;
                 let weight = ((self.answer_data[2] as u16) << 8) | self.answer_data[3] as u16;
@@ -137,7 +137,7 @@ pub struct NbnsAnswer {
     pub hostname: String,
 }
 
-fn decode_ptr_record(bytes: &Vec<u8>, terminator: u8) -> Result<(String, usize)> {
+fn decode_ptr_record(bytes: &[u8], terminator: u8) -> Result<(String, usize)> {
     let mut name_buf = vec![];
     let mut idx = 0;
     let mut byte = &bytes[idx];
@@ -149,7 +149,7 @@ fn decode_ptr_record(bytes: &Vec<u8>, terminator: u8) -> Result<(String, usize)>
             None => break
         }
         if *byte != terminator && *byte > 0 {
-            name_buf.push('.' as u8);
+            name_buf.push(b'.');
         }
     }
     let namestr = std::str::from_utf8(&name_buf)?.to_owned();
@@ -169,7 +169,7 @@ fn decode_label(bytes: &[u8], start: usize) -> Result<(String, usize)> {
         match bytes.get(idx) {
             Some(b) => {
                 byte = *b;
-                name_buf.push('.' as u8);
+                name_buf.push(b'.');
             },
             None => break
         }
@@ -211,7 +211,7 @@ impl DnsDecodable for DnsAnswer {
         // answ.ptr_offset = answ.ptr_offset & 0xfff;
         let len = start + answ.datalen as usize;
         match answ.qtype {
-            DnsQuestionType::NBSTAT => {
+            DnsQuestionType::Nbstat => {
                 // TODO: more detailed reporting of NBNS queries
                 answ.answer_data = ans_bytes.to_vec();
             }
@@ -242,15 +242,12 @@ impl DnsDecodable for NbnsAnswer {
             let start = (qname_len + 13) + i * 18;
             let end = qname_len + 13 + (i + 1) * 16;
             let name_bytes = &nbytes[start..end];
-            match std::str::from_utf8(name_bytes) {
-                Ok(name_str) => {
-                    names.push(name_str.trim().to_owned());
-                    // For now, just use the first name instead of looking at name flags
-                    if i == 0 {
-                        hostname = name_str.trim().to_owned();
-                    }
-                },
-                Err(_) => {}
+            if let Ok(name_str) = std::str::from_utf8(name_bytes) {
+                names.push(name_str.trim().to_owned());
+                // For now, just use the first name instead of looking at name flags
+                if i == 0 {
+                    hostname = name_str.trim().to_owned();
+                }
             }
         }
 
@@ -261,8 +258,8 @@ impl DnsDecodable for NbnsAnswer {
                     names,
                     hostname,
                     ttl: dns_fields.ttl,
-                    qclass: DnsQuestionClass::IN,
-                    qtype: DnsQuestionType::NBSTAT,
+                    qclass: DnsQuestionClass::In,
+                    qtype: DnsQuestionType::Nbstat,
                 },
                 dns_fields.datalen as usize
             )
@@ -301,7 +298,7 @@ mod test {
         let (answ, len) = DnsAnswer::decode(bytes, 0).expect("convert failed");
 
         assert_eq!(answ.ptr_offset, 0x00c);
-        assert_eq!(answ.qtype, DnsQuestionType::PTR);
+        assert_eq!(answ.qtype, DnsQuestionType::Ptr);
         assert_eq!(answ.ttl, 10);
         assert_eq!(format!("{}", answ), "MBR");
         assert_eq!(len, 18);

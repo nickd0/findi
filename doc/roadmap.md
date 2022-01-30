@@ -48,14 +48,16 @@ Roadmap
 
 ## v0.3.0
 - [ ] Docstrings!
-- [ ] Use proper name decoding for DNS answers according to https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4
+- [x] Use proper name decoding for DNS answers according to https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4
 - [ ] User settings for scan type, wait times, thread pool size, UI skins! (`CONFIG`)
 - [ ] Menu bar
 - [ ] Mouse event support
 - [ ] Service search: Multicast DNS to discover available services on the network (airplay, spotify connect, etc)
-  - [ ] UI
+  - [x] UI
   - [ ] STDOUT stream
+  - [ ] Service detail modal
   - [x] service data from additional RRs in packet
+- [ ] Consolidate non-ui modes for all subsystems
 - [ ] Carmen/traceroute integration for non-private queries
 - [ ] IPv6 support?
 - [ ] Use async/await?

@@ -4,30 +4,26 @@ use tui::{
     backend::Backend,
     layout::{Constraint, Layout, Direction},
     text::{Span, Spans},
-    style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Cell, Row, TableState, Table, Paragraph, Gauge},
+    style::{Color, Style, Modifier},
+    widgets::{Block, Borders, Cell, Row, Table, Paragraph},
     Frame,
 };
 
+use crate::ui::components::styles::border_style;
 use crate::ui::components::{
     selectable_title::selectable_title,
     search_filter::draw_search_filter,
+    stateful_table::StatefulTable,
 };
 use crate::ui::event::Key;
 use crate::ui::pages::PageContent;
 use crate::state::actions::AppAction;
 use crate::state::store::{SharedAppStateStore, AppStateStore};
 use crate::network::dns::query::DnsQuestionType;
-use crate::service::{
-    service::{dispatch_service_search, ServiceDevice},
+use crate::services::{
+    service::dispatch_service_search,
     service_list::DEFAULT_SERVICES,
 };
-
-
-// struct ServiceStatefulTable<'a> {
-//     state: &'a TableState,
-//     items: &'a Vec<&'a ServiceDevice>
-// }
 
 
 pub fn setup_page(store: &mut AppStateStore) {
@@ -36,7 +32,7 @@ pub fn setup_page(store: &mut AppStateStore) {
 
 
 pub fn draw_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) {
-	let lstore = store.lock().unwrap();
+	let mut lstore = store.lock().unwrap();
 
     let rects = Layout::default()
         .direction(Direction::Vertical)
@@ -93,13 +89,13 @@ pub fn draw_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) {
                         DnsQuestionType::A => {
                             ipv4_cell = Cell::from(ans_txt)
                         },
-                        DnsQuestionType::AAAA => {
+                        DnsQuestionType::Aaaa => {
                             ipv6_cell = Cell::from(ans_txt)
                         },
-                        DnsQuestionType::PTR => {
+                        DnsQuestionType::Ptr => {
                             name_cell = Cell::from(ans_txt)
                         },
-                        DnsQuestionType::TXT => {
+                        DnsQuestionType::Txt => {
                             txt_spans.push(Span::from(ans_txt))
                         },
                         _ => {},
@@ -125,10 +121,20 @@ pub fn draw_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) {
         .height(1)
         .bottom_margin(1);
 
-	let table_block = Block::default().title(selectable_title("Results", Style::default())).borders(Borders::ALL);
+	let table_block = Block::default()
+        .title(selectable_title("Results", Style::default()))
+        .borders(Borders::ALL)
+        .border_style(border_style(lstore.state.curr_focus == PageContent::HostTable));
+
+    let selected_style = Style::default()
+        .bg(Color::Black)
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::REVERSED);
+
     let table = Table::new(rows)
         .header(header)
         .block(table_block)
+        .highlight_style(selected_style)
         .widths(&[
             Constraint::Percentage(20),
             Constraint::Length(16),
@@ -136,35 +142,44 @@ pub fn draw_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) {
             Constraint::Min(50),
         ]);
 
-    f.render_widget(table, rects[1]);
+    f.render_stateful_widget(table, rects[1], &mut lstore.state.table_state);
 }
 
 
 pub fn handle_page_event(key: Key, store: &mut AppStateStore, shared_store: SharedAppStateStore) {
     match key {
         Key::Char('s') => store.dispatch(AppAction::ShiftFocus(PageContent::ServiceSelect)),
+        Key::Char('r') => store.dispatch(AppAction::ShiftFocus(PageContent::HostTable)),
         Key::Down | Key::Up => {
-            if store.state.curr_focus == PageContent::ServiceSelect {
-                let idx = store.state.selected_service_group;
+            match store.state.curr_focus {
+                PageContent::ServiceSelect => {
+                    let idx = store.state.selected_service_group;
 
-                let nx_idx: usize = match key {
-                    Key::Down => {
-                        if idx == DEFAULT_SERVICES.len() - 1 {
-                            0
-                        } else {
-                            idx + 1
-                        }
-                    },
-                    Key::Up => {
-                        if idx == 0 {
-                            DEFAULT_SERVICES.len() - 1
-                        } else {
-                            idx - 1
-                        }
-                    },
-                    _ => 0,
-                };
-                store.dispatch(AppAction::SelectServiceGroup(nx_idx));
+                    let nx_idx: usize = match key {
+                        Key::Down => {
+                            if idx == DEFAULT_SERVICES.len() - 1 {
+                                0
+                            } else {
+                                idx + 1
+                            }
+                        },
+                        Key::Up => {
+                            if idx == 0 {
+                                DEFAULT_SERVICES.len() - 1
+                            } else {
+                                idx - 1
+                            }
+                        },
+                        _ => 0,
+                    };
+                    store.dispatch(AppAction::SelectServiceGroup(nx_idx));
+                },
+                PageContent::HostTable => {
+                    let mut stable = StatefulTable::new(&store.state.table_state, &store.state.found_svcs);
+                    let idx = stable.handle_key(key);
+                    store.dispatch(AppAction::TableSelect(idx));
+                },
+                _ => {},
             }
         },
         Key::Enter => {
@@ -172,6 +187,7 @@ pub fn handle_page_event(key: Key, store: &mut AppStateStore, shared_store: Shar
                 let svcs = &DEFAULT_SERVICES[store.state.selected_service_group].1;
                 let name = &DEFAULT_SERVICES[store.state.selected_service_group].0;
                 dispatch_service_search(shared_store, name, svcs);
+                store.dispatch(AppAction::ShiftFocus(PageContent::HostTable));
             }
         }
         _ => {},

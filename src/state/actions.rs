@@ -2,7 +2,7 @@ use crate::network::ping_result::PingResult;
 use crate::network::{
     host::Host,
 };
-use crate::service::service::ServiceDevice;
+use crate::services::service::ServiceDevice;
 use crate::ui::{
     pages::PageContent,
     components::search_filter::SearchFilterOption

@@ -1,7 +1,7 @@
 use tui::widgets::TableState;
 
 use crate::network::host::{HostVec, Host};
-use crate::service::service::ServiceDevice;
+use crate::services::service::ServiceDevice;
 use crate::ui::components::search_filter::SearchFilterOption;
 use crate::ui::{
     pages::PageContent,

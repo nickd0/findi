@@ -33,8 +33,8 @@ use std::time::Duration;
 // For now, we assume only one answer per reverse lookup, so only return one in this func
 pub fn reverse_dns_lookup(ip: Ipv4Addr, qtype: DnsQuestionType) -> Option<DnsAnswer> {
     let port = match qtype {
-        DnsQuestionType::NBSTAT => 137,
-        DnsQuestionType::PTR => 5353,
+        DnsQuestionType::Nbstat => 137,
+        DnsQuestionType::Ptr => 5353,
         _ => 5353,
     };
 
@@ -61,17 +61,10 @@ pub fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, rcv_pa
     // TODO: make this timeout configurable
     usock.set_read_timeout(Some(Duration::from_millis(200)))?;
 
-    loop {
-        match usock.recv_from(&mut buf) {
-            Ok((sz, _)) => {
-                match DnsPacket::decode(&buf[0..sz]) {
-                    Ok((packet, _)) => {
-                        rcv_packets.push(packet);
-                    },
-                    Err(_) => {}
-                }
-            },
-            Err(_) => break
+    // Receive all packets from UDP
+    while let Ok((sz, _)) = usock.recv_from(&mut buf) {
+        if let Ok((packet, _)) = DnsPacket::decode(&buf[0..sz]) {
+            rcv_packets.push(packet);
         }
     }
     Ok(())
