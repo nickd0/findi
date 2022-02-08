@@ -10,15 +10,18 @@ Notes:
 */
 
 mod network;
+mod services;
 mod ui;
 mod state;
 mod config;
 
-use ui::ui_loop;
+use ui::{
+    pages::Page,
+    ui_loop,
+};
 use network::input_parse;
 use state::store::AppStateStore;
 use state::actions::AppAction;
-use network::init_host_search;
 use config::AppConfig;
 
 use std::process::exit;
@@ -40,35 +43,38 @@ fn parse_args<'a>() -> ArgMatches<'a> {
         .version(crate_version!())
         .author(crate_authors!())
         .about("A local network discovery tool")
+        .subcommand(
+            App::new("host-scan")
+                .about("Scans local network for live hosts.")
+                .arg(Arg::with_name("custom_cidr")
+                    .short("c")
+                    .long("cidr")
+                    .help("Network host query in CIDR notation")
+                    .takes_value(true))
 
-        .arg(Arg::with_name("disable_ui")
-            .short("n")
-            .long("no-ui")
-            .help("Disable the TUI app"))
+                .arg(Arg::with_name("interface")
+                    .short("i")
+                    .long("interface")
+                    .help("Network interface for query")
+                    .takes_value(true))
 
-        .arg(Arg::with_name("custom_cidr")
-            .short("c")
-            .long("cidr")
-            .help("Network host query in CIDR notation")
-            .takes_value(true))
+                .arg(Arg::with_name("scan_ports")
+                    .short("p")
+                    .long("tcpports")
+                    .help("TCP port scan list/range (e.g. -p 22 or -p 22,443 or -p 80-90)")
+                    .takes_value(true))
 
-        .arg(Arg::with_name("interface")
-            .short("i")
-            .long("interface")
-            .help("Network interface for query")
-            .takes_value(true))
+                .arg(Arg::with_name("output_file")
+                    .short("o")
+                    .long("output")
+                    .help("Output file location with extension (csv|json|txt)")
+                    .takes_value(true))
+        )
 
-        .arg(Arg::with_name("scan_ports")
-            .short("p")
-            .long("tcpports")
-            .help("TCP port scan list/range (e.g. -p 22 or -p 22,443 or -p 80-90)")
-            .takes_value(true))
-
-        .arg(Arg::with_name("output_file")
-            .short("o")
-            .long("output")
-            .help("Output file location with extension (csv|json|txt)")
-            .takes_value(true))
+        .subcommand(
+            App::new("service-scan")
+                .about("Scans local network for Bonjor/ZeroConf services.")
+        )
 
         .arg(Arg::with_name("tick_len")
             .short("t")
@@ -81,6 +87,17 @@ fn parse_args<'a>() -> ArgMatches<'a> {
             .long("numworkers")
             .help("Number of workers for network scanning.")
             .takes_value(true))
+
+        .arg(Arg::with_name("service_scan")
+            .short("s")
+            .long("servicescan")
+            .help("Scan for local network services with mDNS.")
+            .takes_value(true))
+
+        .arg(Arg::with_name("disable_ui")
+            .short("n")
+            .long("no-ui")
+            .help("Disable the TUI app"))
 
         .get_matches()
 }
@@ -161,12 +178,16 @@ fn main() {
 
     let shared_store = Arc::new(Mutex::new(store));
 
-    init_host_search(shared_store.clone());
+    let run_page = match matches.subcommand() {
+        ("host-scan", _) => Page::MainPage,
+        ("service-scan", _) => Page::ServiceScanPage,
+        _ => unreachable!(),
+    };
 
     #[cfg(feature = "ui")]
     if !matches.is_present("disable_ui") {
         // Run UI on main thread
-        let _ = ui_loop(shared_store);
+        let _ = ui_loop(shared_store, run_page);
     } else {
         // TODO: move this elsewhere and accept an argument for different types out output
         // ie stdout, csv, json, etc
@@ -184,7 +205,11 @@ fn main() {
 
             let host = &hstore.state.hosts[hostidx];
             if host.ping_done {
-                if let Some(dur) = host.ping_res {
+                if host.ping_res.is_some() || host.host_name.as_ref().unwrap().is_ok() {
+                    let dur_str = match host.ping_res {
+                        Some(d) => format!("{:.2?}ms", d.as_millis()),
+                        None => "--".to_owned()
+                    };
                     println!(
                         "Live host {} {}{}",
 
@@ -192,8 +217,8 @@ fn main() {
                             "{:<28}",
 
                             format!(
-                                "{:<15?} ({:.2?}ms)",
-                                host.ip, dur.as_millis()
+                                "{:<15?} {}",
+                                host.ip, dur_str
                             )
                         ),
 

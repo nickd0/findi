@@ -28,29 +28,20 @@ impl Default for SearchFilterOption {
     }
 }
 
-pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut Frame<B>) {
-    let filter_str = match store.state.search_filter_opt {
-        SearchFilterOption::ShowAll => "Show all".to_owned(),
-        SearchFilterOption::ShowFound => "Show resolved only".to_owned(),
-        SearchFilterOption::HasPort(idx) => format!("Port {} open", store.state.port_query[idx])
-    };
-
+pub fn draw_search_filter<B: Backend>(store: &AppStateStore, rect: Rect, f: &mut Frame<B>, title: &str, txt: &str, content: PageContent) {
     let filter_style = Style::default().fg(Color::Green);
 
     let span = Span::styled(
-        format!("{} ▼", filter_str), 
+        format!("{} ▼", txt), 
         filter_style
     );
 
+    let style = border_style(store.state.curr_focus == content);
+
     let control_block = Block::default()
         .borders(Borders::ALL)
-        .style(
-            match store.state.curr_focus {
-                PageContent::SearchFilters => border_style(true),
-                _ => border_style(false)
-            }
-        )
-        .title(selectable_title("Filter/sort", Style::default()));
+        .style(style)
+        .title(selectable_title(title, Style::default()));
 
     let filter_option = Paragraph::new(span)
         .alignment(Alignment::Center)

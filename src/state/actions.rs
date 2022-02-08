@@ -2,6 +2,7 @@ use crate::network::ping_result::PingResult;
 use crate::network::{
     host::Host,
 };
+use crate::services::service::ServiceDevice;
 use crate::ui::{
     pages::PageContent,
     components::search_filter::SearchFilterOption
@@ -38,6 +39,9 @@ pub enum AppAction {
     SetConfig(AppConfig),
     SetConfigNWorkers(usize),
     SetConfigTick(usize),
+
+    SelectServiceGroup(usize),
+    AddService(ServiceDevice),
 }
 
 // impl AppAction {

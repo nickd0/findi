@@ -141,7 +141,7 @@ pub fn draw_modal<B: Backend>(modal: Modal, f: &mut Frame<B>) {
     let no_btn = Paragraph::new(no_span).alignment(Alignment::Center);
 
 
-    let msg_spans: Vec<Spans> = modal.message.split("\n").map(|msgstr| {
+    let msg_spans: Vec<Spans> = modal.message.split('\n').map(|msgstr| {
         Spans::from(msgstr)
     }).collect();
     // let msg_span = Spans::from(Span::from(modal.message));

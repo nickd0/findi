@@ -1,9 +1,10 @@
+// UI page for host scan.
 use tui::{
     backend::Backend,
     layout::{Constraint, Layout, Direction},
     text::{Span},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Cell, Row, TableState, Table, Paragraph, Gauge},
+    widgets::{Block, Borders, Cell, Row, Table, Paragraph, Gauge},
     Frame,
 };
 use clipboard::{ClipboardProvider, ClipboardContext};
@@ -13,7 +14,8 @@ use crate::ui::{
     notification::{Notification, NotificationLevel},
     components::{
         search_filter::{draw_search_filter, SearchFilterOption},
-        selectable_title::selectable_title
+        selectable_title::selectable_title,
+        stateful_table::StatefulTable,
     }
 };
 use crate::ui::modal::{Modal, ModalType};
@@ -29,79 +31,6 @@ use crate::ui::{
 use std::convert::TryInto;
 
 use crate::ui::event::Key;
-
-const JUMP_LEN: usize = 20;
-
-pub struct StatefulTable<'a> {
-  state: &'a TableState,
-  items: &'a Vec<&'a Host>
-}
-
-impl<'a> StatefulTable<'a> {
-
-    #[allow(clippy::ptr_arg)]
-    pub fn new(state: &'a TableState, items: &'a Vec<&'a Host>) -> StatefulTable<'a> {
-        StatefulTable {
-            state,
-            items
-        }
-    }
-
-    pub fn next(&self) -> Option<usize> {
-        match self.state.selected() {
-            Some(i) => {
-                if i >= self.items.len() - 1 {
-                    Some(0)
-                } else {
-                    Some(i + 1)
-                }
-            },
-            None => Some(0)
-        }
-    }
-
-    pub fn prev(&self) -> Option<usize> {
-        match self.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    Some(self.items.len() - 1)
-                } else {
-                    Some(i - 1)
-                }
-            },
-            None => Some(self.items.len() - 1)
-        }
-    }
-
-    // TODO use table window size to paginate
-    pub fn pgdn(&self) -> Option<usize> {
-        let idx = match self.state.selected() {
-            Some(i) => {
-                if i + JUMP_LEN > self.items.len() - 1 {
-                    0
-                } else {
-                    i + JUMP_LEN
-                }
-            },
-            None => 0
-        };
-        Some(idx)
-    }
-
-    pub fn pgup(&self) -> Option<usize> {
-        let idx = match self.state.selected() {
-            Some(i) => {
-                if i < JUMP_LEN {
-                    self.items.len() -1
-                } else {
-                    i - JUMP_LEN
-                }
-            },
-            None => 0
-        };
-        Some(idx)
-    }
-}
 
 pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) {
     let mut lstore = store.lock().unwrap();
@@ -156,8 +85,14 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 
     f.render_widget(input, first_row[0]);
 
+
+    let filter_str = match lstore.state.search_filter_opt {
+        SearchFilterOption::ShowAll => "Show all".to_owned(),
+        SearchFilterOption::ShowFound => "Show resolved only".to_owned(),
+        SearchFilterOption::HasPort(idx) => format!("Port {} open", lstore.state.port_query[idx])
+    };
     // Render filter options
-    draw_search_filter(&*lstore, first_row[1], f);
+    draw_search_filter(&*lstore, first_row[1], f, "Filter/Sort", &filter_str, PageContent::SearchFilters);
 
     if let PageContent::QueryInput = curr_focus {
         f.set_cursor(rects[0].x + query.len() as u16 + 1, rects[0].y + 1)
@@ -397,7 +332,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                 Key::Left | Key::Right | Key::Char(' ') => {
                     match store.state.search_filter_opt {
                         SearchFilterOption::ShowAll => {
-                            if store.state.port_query.len() > 0 && matches!(key, Key::Left) {
+                            if !store.state.port_query.is_empty() && matches!(key, Key::Left) {
                                 store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::HasPort(store.state.port_query.len() - 1)))
                             } else {
                                 store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowFound))
@@ -405,7 +340,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                         },
                         SearchFilterOption::ShowFound => {
                             // Reset table select index on filter
-                            if store.state.port_query.len() > 0 && matches!(key, Key::Right) {
+                            if !store.state.port_query.is_empty() && matches!(key, Key::Right) {
                                 let mut idx = 0;
                                 if matches!(key, Key::Left) {
                                     idx = store.state.port_query.len() - 1
@@ -519,7 +454,8 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
 
                 _ => {}
             }
-        }
+        },
+        _ => {}
     }
 }
 

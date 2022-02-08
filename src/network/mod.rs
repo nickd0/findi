@@ -101,9 +101,8 @@ pub fn init_host_search(store: SharedAppStateStore) {
                 let mut h = Host::host_ping(host.ip);
 
                 for port in port_query {
-                    match tcp_ping::tcp_scan_port(&h.ip, port) {
-                        Ok(_) => { h.tcp_ports.insert(port); },
-                        Err(_) => {}
+                    if tcp_ping::tcp_scan_port(&h.ip, port).is_ok() {
+                        h.tcp_ports.insert(port);
                     }
                 }
 

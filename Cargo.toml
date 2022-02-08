@@ -1,6 +1,6 @@
 [package]
 name = "findi"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Nick Donald <nickjdonald@gmail.com>"]
 edition = "2018"
 default-run = "findi"

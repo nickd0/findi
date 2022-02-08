@@ -9,7 +9,7 @@ pub mod notification;
 pub mod pages;
 pub mod event;
 
-use pages::{Page, draw_page, handle_page_events};
+use pages::{Page, draw_page, handle_page_events, setup_page};
 
 use event::{Event, Key};
 use crate::state::store::SharedAppStateStore;
@@ -30,7 +30,8 @@ use std::io::{self, Write};
 use std::sync::atomic::Ordering;
 use std::ops::DerefMut;
 
-pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
+// pub fn ui_loop(store: SharedAppStateStore, page: Page) -> Result<()> {
+pub fn ui_loop(store: SharedAppStateStore, curr_page: Page) -> Result<()> {
     enable_raw_mode()?;
 
     let mut stdout = io::stdout();
@@ -44,9 +45,9 @@ pub fn ui_loop(store: SharedAppStateStore) -> Result<()> {
 
     let evt_stream = event::async_event_reader(tick_len);
 
-    let curr_page = Page::MainPage;
-
     terminal.clear()?;
+
+    setup_page(&curr_page, &mut store.lock().unwrap());
 
     while GLOBAL_RUN.load(Ordering::Acquire) {
         // Update the stateful table from application state

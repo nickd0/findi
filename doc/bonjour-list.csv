@@ -1,0 +1,74 @@
+url,Name,Org,link
+_adisk._tcp.local,Time Capsule Backups,Apple Proprietary,Link
+_afpovertcp._tcp.local.,AppleTalk Filing Protocol (AFP),Apple Proprietary,Link
+_airdroid._tcp.local.,AirDroid App,3rd Party Custom,
+_airdrop._tcp.local.,OSX AirDrop,Apple Proprietary,Link
+_airplay._tcp.local.,Apple TV,Apple Proprietary,Link
+_airport._tcp.local.,AirPort Base Station,Apple Proprietary,Link
+_amzn-wplay._tcp.local.,Amazon Devices,Amazon Proprietary,Link
+*._sub._apple-mobdev2._tcp.local.,OSX Wi-Fi Sync,Apple Proprietary,
+_apple-mobdev2._tcp.local.,OSX Wi-Fi Sync,Apple Proprietary,
+_apple-sasl._tcp.local.,Apple Password Server,Apple Proprietary,Link
+_appletv-v2._tcp,Apple TV Home Sharing,Apple Proprietary,Link
+_atc._tcp.local.,Apple Shared iTunes Library,Apple Proprietary,Link
+_sketchmirror._tcp.local.,Sketch App,3rd Party Custom,
+_bcbonjour._tcp,Sketch App,3rd Party Custom,Link
+_bp2p._tcp.local.,???,Unknown,
+_Friendly._sub._bp2p._tcp.local.,???,Unknown,
+_invoke._sub._bp2p._tcp.local.,???,Unknown,
+_webdav._sub._bp2p._tcp.local.,???,Unknown,
+_companion-link._tcp.local,Airplay 2? Undocumented,Apple Proprietary,Link
+_cloud._tcp.local,Cloud by Dapile,3rd Party Custom,Link
+_daap._tcp.local,Digital Audio Access Protocol (DAAP),Apple Proprietary,Link
+_device-info._tcp.local.,OSX Device Info,Apple Proprietary,Link
+_distcc._tcp.local.,Distributed Compiler,Apple Proprietary,Link
+_dpap._tcp.local.,Digital Photo Access Protocol (DPAP),Apple Proprietary,Link
+_eppc._tcp.local.,Remote AppleEvents,Apple Proprietary,Link
+_esdevice._tcp.local.,ES File Share App,3rd Party Custom,
+_esfileshare._tcp.local.,ES File Share App,3rd Party Custom,
+_ftp._tcp.local.,File Transfer Protocol (FTP),File Protocol,Link
+_googlecast._tcp.local.,Google Cast (Chromecast),Google Proprietary,Link
+_googlezone._tcp.local.,Google Zone (Chromecast),Google Proprietary,Link
+_hap._tcp.local.,Apple HomeKit – HomeKit Accessory Protocol,Apple Proprietary,Link
+_homekit._tcp.local.,Apple HomeKit,Apple Proprietary,Link
+_home-sharing._tcp.local.,iTunes Home Sharing,Apple Proprietary,Link
+_http._tcp.local.,Hypertext Transfer Protocol (HTTP),File Protocol,Link
+_hudson._tcp.local.,Jenkins App,3rd Party Custom,Link
+_ica-networking._tcp.local.,Image Capture Sharing,Apple Proprietary,Link
+_ichat._tcp.local,iChat Instant Messaging Protocol,Apple Proprietary,Link
+_print._sub._ipp._tcp.local.,Printers (AirPrint),Universal / Shared,Link
+_cups._sub._ipps._tcp.local.,Printers,Universal / Shared,
+_print._sub._ipps._tcp.local.,Printers,Universal / Shared,
+_jenkins._tcp.local.,Jenkins App,3rd Party Custom,Link
+_KeynoteControl._tcp.local.,OSX Keynote,Apple Proprietary,Link
+_keynotepair._tcp.local.,OSX Keynote,Apple Proprietary,Link
+_mediaremotetv._tcp.local.,Apple TV Media Remote,Apple Proprietary,Link
+_nfs._tcp.local.,Network File System (NFS),File Protocol,Link
+_nvstream._tcp.local.,NVIDIA Shield Game Streaming,3rd Party Custom,Link
+_androidtvremote._tcp.local.,Nvidia Shield / Android TV,3rd Party Proprietary,Link
+_omnistate._tcp.local.,OmniGroup (OmniGraffle and other apps),3rd Party Custom,Link
+_pdl-datastream._tcp.local,PDL Data Stream (Port 9100),Apple Proprietary,Link
+_photoshopserver._tcp.local.,Adobe Photoshop Nav,3rd Party Custom,Link
+_printer._tcp.local.,Printers – Line Printer Daemon (LPD/LPR),Universal / Shared,Link
+_raop._tcp.local.,AirPlay – Remote Audio Output Protocol,Apple Proprietary,Link
+_readynas._tcp.local.,Netgear ReadyNAS,3rd Party Custom,Link
+_rfb._tcp.local.,OSX Screen Sharing,Apple Proprietary,Link
+_physicalweb._tcp.local.,Physical Web,Google Proprietary,Link
+_riousbprint._tcp.local,Remote I/O USB Printer Protocol,Apple Proprietary,Link
+_rsp._tcp.local.,Roku Server Protocol,3rd Party Custom,Link
+_scanner._tcp.local.,Scanners,Universal / Shared,Link
+_servermgr._tcp.local,Server Admin,Apple Proprietary,Link
+_sftp-ssh._tcp.local.,Protocol – SFTP,File Protocol,Link
+_sleep-proxy._udp.local.,Wake-on-Network / Bonjour Sleep Proxy,Apple Proprietary,Link
+_smb._tcp.local.,Protocol – SMB,File Protocol,Link
+_spotify-connect._tcp.local.,Spotify Connect,3rd Party Custom,Link  Credit: Radek
+_ssh._tcp.local.,Protocol – SSH,File Protocol,Link
+_teamviewer._tcp.local.,TeamViewer,3rd Party Custom,Link
+_telnet._tcp.local.,Remote Login (TELNET),File Protocol,Link
+_touch-able._tcp.local.,Apple TV Remote App (iOS devices),Apple Proprietary,Link
+_tunnel._tcp.local.,Tunnel,File Protocol,Link
+_udisks-ssh._tcp.local,Ubuntu / Raspberry Pi Advertisement,3rd Party Custom,Link
+_webdav._tcp.local.,WebDAV File System (WEBDAV),File Protocol,Link
+_webdav._tcp.local.,WebDAV File System (WEBDAV),File Protocol,Link
+_workstation._tcp.local.,Workgroup Manager,Apple Proprietary,Link
+_xserveraid._tcp.local.,Xserve RAID,Apple Proprietary,Link
