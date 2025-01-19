@@ -1,29 +1,24 @@
+use clipboard::{ClipboardContext, ClipboardProvider};
 use tui::{
     backend::Backend,
-    layout::{Constraint, Layout, Direction},
-    text::{Span},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Cell, Row, TableState, Table, Paragraph, Gauge},
+    text::Span,
+    widgets::{Block, Borders, Cell, Gauge, Paragraph, Row, Table, TableState},
     Frame,
 };
-use clipboard::{ClipboardProvider, ClipboardContext};
 
-use crate::state::store::{SharedAppStateStore, AppStateStore};
+use crate::network::{host::Host, input_parse};
+use crate::state::actions::AppAction;
+use crate::state::store::{AppStateStore, SharedAppStateStore};
+use crate::ui::modal::{Modal, ModalType};
+use crate::ui::pages::PageContent;
 use crate::ui::{
-    notification::{Notification, NotificationLevel},
     components::{
         search_filter::{draw_search_filter, SearchFilterOption},
-        selectable_title::selectable_title
-    }
-};
-use crate::ui::modal::{Modal, ModalType};
-use crate::state::actions::AppAction;
-use crate::network::{
-    input_parse,
-    host::Host
-};
-use crate::ui::{
-    pages::PageContent
+        selectable_title::selectable_title,
+    },
+    notification::{Notification, NotificationLevel},
 };
 
 use std::convert::TryInto;
@@ -33,18 +28,14 @@ use crate::ui::event::Key;
 const JUMP_LEN: usize = 20;
 
 pub struct StatefulTable<'a> {
-  state: &'a TableState,
-  items: &'a Vec<&'a Host>
+    state: &'a TableState,
+    items: &'a Vec<&'a Host>,
 }
 
 impl<'a> StatefulTable<'a> {
-
     #[allow(clippy::ptr_arg)]
     pub fn new(state: &'a TableState, items: &'a Vec<&'a Host>) -> StatefulTable<'a> {
-        StatefulTable {
-            state,
-            items
-        }
+        StatefulTable { state, items }
     }
 
     pub fn next(&self) -> Option<usize> {
@@ -55,8 +46,8 @@ impl<'a> StatefulTable<'a> {
                 } else {
                     Some(i + 1)
                 }
-            },
-            None => Some(0)
+            }
+            None => Some(0),
         }
     }
 
@@ -68,8 +59,8 @@ impl<'a> StatefulTable<'a> {
                 } else {
                     Some(i - 1)
                 }
-            },
-            None => Some(self.items.len() - 1)
+            }
+            None => Some(self.items.len() - 1),
         }
     }
 
@@ -82,8 +73,8 @@ impl<'a> StatefulTable<'a> {
                 } else {
                     i + JUMP_LEN
                 }
-            },
-            None => 0
+            }
+            None => 0,
         };
         Some(idx)
     }
@@ -92,14 +83,24 @@ impl<'a> StatefulTable<'a> {
         let idx = match self.state.selected() {
             Some(i) => {
                 if i < JUMP_LEN {
-                    self.items.len() -1
+                    self.items.len() - 1
                 } else {
                     i - JUMP_LEN
                 }
-            },
-            None => 0
+            }
+            None => 0,
         };
         Some(idx)
+    }
+
+    pub fn last(&self) -> Option<usize> {
+        // TODO: guard
+        Some(self.items.len() - 1)
+    }
+
+    pub fn first(&self) -> Option<usize> {
+        // TODO: guard
+        Some(0)
     }
 }
 
@@ -117,42 +118,35 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
             [
                 Constraint::Length(3),
                 Constraint::Min(10),
-                Constraint::Length(3)
-            ].as_ref()
+                Constraint::Length(3),
+            ]
+            .as_ref(),
         )
         .split(f.size());
-    
+
     let selected_border_style = Style::default().fg(Color::Yellow);
     let default_border_style = Style::default().fg(Color::White);
 
     let first_row = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage(50),
-                Constraint::Percentage(50),
-            ].as_ref()
-        )
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(rects[0]);
 
-    let input = Paragraph::new(Span::from(query.to_owned()))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(
-                    match curr_focus {
-                        PageContent::QueryInput => {
-                            if parse_err {
-                                selected_border_style.fg(Color::Red)
-                            } else {
-                                selected_border_style
-                            }
-                        },
-                        _ => default_border_style
+    let input = Paragraph::new(Span::from(query.to_owned())).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(match curr_focus {
+                PageContent::QueryInput => {
+                    if parse_err {
+                        selected_border_style.fg(Color::Red)
+                    } else {
+                        selected_border_style
                     }
-                )
-                .title(selectable_title("Search", Style::default()))
-        );
+                }
+                _ => default_border_style,
+            })
+            .title(selectable_title("Search", Style::default())),
+    );
 
     f.render_widget(input, first_row[0]);
 
@@ -165,28 +159,28 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
 
     // Render Gauge //
     let hosts_len = &lstore.state.hosts.len();
-    let num_done = &lstore.state.hosts
-        .iter()
-        .filter(|&h| h.ping_done)
-        .count();
-    
+    let num_done = &lstore.state.hosts.iter().filter(|&h| h.ping_done).count();
+
     let pcnt_done = (num_done * 100 / hosts_len) as u16;
 
     let gauge = Gauge::default()
-        .block(Block::default().title("Hosts scanned").borders(Borders::ALL))
+        .block(
+            Block::default()
+                .title("Hosts scanned")
+                .borders(Borders::ALL),
+        )
         .gauge_style(Style::default().fg(Color::Yellow))
         .percent(pcnt_done);
-    
+
     f.render_widget(gauge, rects[2]);
 
-    // Render host table // 
+    // Render host table //
     let selected_style = Style::default()
         .bg(Color::Black)
         .fg(Color::Yellow)
         .add_modifier(Modifier::REVERSED);
 
-    let normal_style = Style::default()
-        .bg(Color::Rgb(23, 112, 191));
+    let normal_style = Style::default().bg(Color::Rgb(23, 112, 191));
 
     let header_cells = ["Host IP", "Hostname", "Status", "Ping type", "Ports open"]
         .iter()
@@ -196,7 +190,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
         .style(normal_style)
         .height(1)
         .bottom_margin(1);
-    
+
     let rows = lstore.state.filtered_hosts().map(|host| {
         let mut style = Style::default();
         let mut status_cell = Cell::from("?");
@@ -212,10 +206,11 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
             ping_cell = Cell::from(ping_type.to_string());
 
             port_cell = Cell::from(
-                host.tcp_ports.iter()
+                host.tcp_ports
+                    .iter()
                     .map(|p| p.to_string())
                     .collect::<Vec<String>>()
-                    .join(",")
+                    .join(","),
             );
         }
 
@@ -224,23 +219,27 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
                 Ok(hn) => {
                     style = style.fg(Color::Green);
                     host_cell = Cell::from(hn.to_string())
-                },
-                Err(_) => host_cell = Cell::from("x")
+                }
+                Err(_) => host_cell = Cell::from("x"),
             }
         }
 
-        let cells = vec![Cell::from(host.ip.to_string()), host_cell, status_cell, ping_cell, port_cell];
+        let cells = vec![
+            Cell::from(host.ip.to_string()),
+            host_cell,
+            status_cell,
+            ping_cell,
+            port_cell,
+        ];
         Row::new(cells).style(style)
     });
 
     let table_block = Block::default()
         .borders(Borders::ALL)
-        .border_style(
-          match curr_focus {
+        .border_style(match curr_focus {
             PageContent::HostTable => selected_border_style,
-            _ => default_border_style
-          }
-        )
+            _ => default_border_style,
+        })
         .title(selectable_title("Hosts", Style::default()));
 
     let t = Table::new(rows)
@@ -252,7 +251,7 @@ pub fn draw_main_page<B: Backend>(store: SharedAppStateStore, f: &mut Frame<B>) 
             Constraint::Percentage(30),
             Constraint::Length(15),
             Constraint::Length(10),
-            Constraint::Max(10)
+            Constraint::Max(10),
         ]);
 
     f.render_stateful_widget(t, rects[1], &mut lstore.state.table_state);
@@ -292,13 +291,12 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                 - Press 't' to go to TCP Port scan\n\
                 - Press 'h' to go to host info
                 ",
-                ModalType::Ok
+                ModalType::Ok,
             );
             store.dispatch(AppAction::SetModal(Some(modal)))
         }
         _ => {}
     }
-
 
     // store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
     match store.state.curr_focus {
@@ -311,6 +309,8 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                 Key::Up | Key::Char('k') => s_table.prev(),
                 Key::Char(' ') | Key::Shift('J') | Key::PageDown => s_table.pgdn(),
                 Key::Ctrl(' ') | Key::Shift('K') | Key::PageUp => s_table.pgup(),
+                Key::Shift('G') => s_table.last(),
+                Key::Char('g') => s_table.first(),
 
                 // Focus shift
                 Key::Tab => {
@@ -318,13 +318,13 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                         store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
                     }
                     None
-                },
+                }
                 Key::BackTab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters))
                     }
                     None
-                },
+                }
 
                 // Host drill down
                 Key::Enter => {
@@ -332,11 +332,10 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                         store.dispatch(AppAction::SetSelectedHost(Some(idx)));
                     }
                     None
-                },
+                }
 
                 // Copy host IP to clipboard
                 Key::Char('c') | Key::Shift('C') => {
-
                     if let Some(host_idx) = store.state.table_state.selected() {
                         let mut notif = Notification::default();
 
@@ -346,19 +345,26 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                                 match key {
                                     Key::Char('c') => {
                                         let host_ip = hosts[host_idx].ip;
-                                        notif.message = format!("Address {} copied to clipboard", host_ip.to_string());
+                                        notif.message = format!(
+                                            "Address {} copied to clipboard",
+                                            host_ip.to_string()
+                                        );
                                         ctx.set_contents(host_ip.to_string()).unwrap();
-                                    },
+                                    }
                                     Key::Shift('C') => {
-                                        if let Some(Ok(hostname)) = hosts[host_idx].host_name.as_ref() {
-                                            notif.message = format!("Hostname {} copied to clipboard", hostname.to_owned());
+                                        if let Some(Ok(hostname)) =
+                                            hosts[host_idx].host_name.as_ref()
+                                        {
+                                            notif.message = format!(
+                                                "Hostname {} copied to clipboard",
+                                                hostname.to_owned()
+                                            );
                                             ctx.set_contents(hostname.to_owned()).unwrap();
                                         }
-                                    },
+                                    }
                                     _ => {}
                                 }
-
-                            },
+                            }
                             Err(_) => {
                                 notif.level = NotificationLevel::Warn;
                                 notif.message = "Could not copy to clipboard".to_owned()
@@ -371,11 +377,11 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                     None
                 }
 
-                _ => None
+                _ => None,
             } {
                 store.dispatch(AppAction::TableSelect(Some(table_idx)))
             }
-        },
+        }
 
         PageContent::SearchFilters => {
             match key {
@@ -384,13 +390,13 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
                     }
-                },
+                }
 
                 Key::BackTab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::QueryInput))
                     }
-                },
+                }
 
                 // Filter list includes show all, show resolved, and show each requested TCP port open
                 // TODO: revisit this logic, its a little tangled
@@ -398,11 +404,15 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                     match store.state.search_filter_opt {
                         SearchFilterOption::ShowAll => {
                             if store.state.port_query.len() > 0 && matches!(key, Key::Left) {
-                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::HasPort(store.state.port_query.len() - 1)))
+                                store.dispatch(AppAction::SetSearchFilter(
+                                    SearchFilterOption::HasPort(store.state.port_query.len() - 1),
+                                ))
                             } else {
-                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowFound))
+                                store.dispatch(AppAction::SetSearchFilter(
+                                    SearchFilterOption::ShowFound,
+                                ))
                             }
-                        },
+                        }
                         SearchFilterOption::ShowFound => {
                             // Reset table select index on filter
                             if store.state.port_query.len() > 0 && matches!(key, Key::Right) {
@@ -412,40 +422,44 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                                 }
                                 store.dispatches(vec![
                                     AppAction::TableSelect(None),
-                                    AppAction::SetSearchFilter(SearchFilterOption::HasPort(idx))
+                                    AppAction::SetSearchFilter(SearchFilterOption::HasPort(idx)),
                                 ]);
                             } else {
                                 store.dispatches(vec![
                                     AppAction::TableSelect(None),
-                                    AppAction::SetSearchFilter(SearchFilterOption::ShowAll)
+                                    AppAction::SetSearchFilter(SearchFilterOption::ShowAll),
                                 ]);
                             }
-                        },
+                        }
                         SearchFilterOption::HasPort(idx) => {
                             let iidx: isize = idx.try_into().unwrap();
 
                             let nxt = match key {
                                 Key::Left => iidx - 1,
                                 Key::Right | Key::Char(' ') => iidx + 1,
-                                _ => 0
+                                _ => 0,
                             };
 
                             let iport_len = store.state.port_query.len().try_into().unwrap();
 
                             if nxt < iport_len && nxt > 0 {
-                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::HasPort(nxt.try_into().unwrap())))
+                                store.dispatch(AppAction::SetSearchFilter(
+                                    SearchFilterOption::HasPort(nxt.try_into().unwrap()),
+                                ))
                             } else if nxt >= iport_len {
-                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowAll))
+                                store.dispatch(AppAction::SetSearchFilter(
+                                    SearchFilterOption::ShowAll,
+                                ))
                             } else {
-                                store.dispatch(AppAction::SetSearchFilter(SearchFilterOption::ShowFound))
+                                store.dispatch(AppAction::SetSearchFilter(
+                                    SearchFilterOption::ShowFound,
+                                ))
                             }
                         }
                     }
-                },
+                }
 
-                Key::Down => {
-                    store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
-                },
+                Key::Down => store.dispatch(AppAction::ShiftFocus(PageContent::HostTable)),
 
                 _ => {}
             }
@@ -458,13 +472,13 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::SearchFilters))
                     }
-                },
+                }
 
                 Key::BackTab => {
                     if store.state.modal.is_none() {
                         store.dispatch(AppAction::ShiftFocus(PageContent::HostTable))
                     }
-                },
+                }
 
                 Key::Backspace => {
                     let qlen = store.state.query.len();
@@ -473,7 +487,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                         store.dispatch(AppAction::SetQuery(q));
                         store.dispatch(AppAction::SetNotification(None))
                     }
-                },
+                }
 
                 Key::Enter => {
                     let parsed = input_parse(&store.state.query);
@@ -481,32 +495,26 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                     // Check if modal is visible and YES is selected, then parse and send hosts
                     match parsed {
                         Ok(_) => {
-                            let mut msg = String::from("Are you sure you want to start a new query?");
+                            let mut msg =
+                                String::from("Are you sure you want to start a new query?");
                             if store.state.query_state {
                                 msg.push_str(" This will discard the current results.")
                             } else {
                                 msg.push_str(" This will kill the current query.")
                             }
-                            let modal = Modal::new(
-                                "Confirm",
-                                &msg,
-                                ModalType::YesNo
-                            );
+                            let modal = Modal::new("Confirm", &msg, ModalType::YesNo);
                             store.dispatch(AppAction::SetModal(Some(modal)))
-                        },
-                        
-                        Err(err) => {
-                            store.dispatch(AppAction::SetNotification(
-                                Some(Notification::new(
-                                    "Error",
-                                    &format!("{}", err),
-                                    NotificationLevel::Warn
-                                ))
-                            ))
+                        }
 
+                        Err(err) => {
+                            store.dispatch(AppAction::SetNotification(Some(Notification::new(
+                                "Error",
+                                &format!("{}", err),
+                                NotificationLevel::Warn,
+                            ))))
                         }
                     }
-                },
+                }
 
                 Key::Char(c) => {
                     if c.is_numeric() || c == '.' || c == '/' {
@@ -515,7 +523,7 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                         store.dispatch(AppAction::SetQuery(q));
                         store.dispatch(AppAction::SetNotification(None))
                     }
-                },
+                }
 
                 _ => {}
             }
@@ -528,9 +536,9 @@ mod test {
     use super::*;
     use crate::state::application_state::ApplicationState;
     use std::{
+        net::Ipv4Addr,
         ops::DerefMut,
-        sync::{Mutex, Arc},
-        net::Ipv4Addr
+        sync::{Arc, Mutex},
     };
 
     #[test]
@@ -547,9 +555,11 @@ mod test {
         ];
 
         let store = AppStateStore::new();
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.table_state.selected().unwrap()
-        })
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| state.table_state.selected().unwrap(),
+        )
     }
 
     #[test]
@@ -562,9 +572,11 @@ mod test {
         ];
 
         let store = AppStateStore::new();
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.curr_focus
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| state.curr_focus,
+        );
     }
 
     #[test]
@@ -580,9 +592,11 @@ mod test {
         let mut store = AppStateStore::new();
         store.state.modal = Some(Modal::new("Modal", "Cool message", ModalType::YesNo));
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.curr_focus
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| state.curr_focus,
+        );
     }
 
     #[test]
@@ -600,9 +614,11 @@ mod test {
         let mut store = AppStateStore::new();
         store.state.curr_focus = PageContent::QueryInput;
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.query.to_owned()
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| state.query.to_owned(),
+        );
     }
 
     #[test]
@@ -613,13 +629,18 @@ mod test {
 
         let events: [(Key, String); 1] = [
             // FIXME: test too rigid
-            (Key::Enter, "Are you sure you want to start a new query? This will kill the current query.".to_owned()),
+            (
+                Key::Enter,
+                "Are you sure you want to start a new query? This will kill the current query."
+                    .to_owned(),
+            ),
         ];
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.modal.as_ref().unwrap().message.to_owned()
-        });
-        
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| state.modal.as_ref().unwrap().message.to_owned(),
+        );
     }
 
     #[test]
@@ -628,13 +649,20 @@ mod test {
         store.state.query = "10.0.1.0/2".to_owned();
         store.state.curr_focus = PageContent::QueryInput;
 
-        let events: [(Key, bool); 1] = [
-            (Key::Enter, true),
-        ];
+        let events: [(Key, bool); 1] = [(Key::Enter, true)];
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.notification.as_ref().unwrap().message.contains("Network is larger than max size")
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| {
+                state
+                    .notification
+                    .as_ref()
+                    .unwrap()
+                    .message
+                    .contains("Network is larger than max size")
+            },
+        );
     }
 
     #[test]
@@ -643,13 +671,20 @@ mod test {
         store.state.query = "10.0.1.299/".to_owned();
         store.state.curr_focus = PageContent::QueryInput;
 
-        let events: [(Key, bool); 1] = [
-            (Key::Enter, true),
-        ];
+        let events: [(Key, bool); 1] = [(Key::Enter, true)];
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.notification.as_ref().unwrap().message.contains("Please provide a valid IPv4 CIDR")
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| {
+                state
+                    .notification
+                    .as_ref()
+                    .unwrap()
+                    .message
+                    .contains("Please provide a valid IPv4 CIDR")
+            },
+        );
     }
 
     #[test]
@@ -665,11 +700,12 @@ mod test {
             (Key::Char(' '), None),
         ];
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.table_state.selected()
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| state.table_state.selected(),
+        );
     }
-
 
     #[test]
     fn test_main_page_filters_navigate() {
@@ -677,14 +713,25 @@ mod test {
 
         store.state.curr_focus = PageContent::SearchFilters;
         let events: [(Key, (SearchFilterOption, PageContent)); 3] = [
-            (Key::Left, (SearchFilterOption::ShowFound, PageContent::SearchFilters)),
-            (Key::Left, (SearchFilterOption::ShowAll, PageContent::SearchFilters)),
-            (Key::Down, (SearchFilterOption::ShowAll, PageContent::HostTable)),
+            (
+                Key::Left,
+                (SearchFilterOption::ShowFound, PageContent::SearchFilters),
+            ),
+            (
+                Key::Left,
+                (SearchFilterOption::ShowAll, PageContent::SearchFilters),
+            ),
+            (
+                Key::Down,
+                (SearchFilterOption::ShowAll, PageContent::HostTable),
+            ),
         ];
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            (state.search_filter_opt, state.curr_focus)
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| (state.search_filter_opt, state.curr_focus),
+        );
     }
 
     #[test]
@@ -704,30 +751,45 @@ mod test {
             // (Key::Shift('C'), Some("Hostname foobar.local copied to clipboard".to_owned())),
         ];
 
-        main_page_event_assertion(&events, Arc::new(Mutex::new(store)), |state: &ApplicationState| {
-            state.notification.is_some()
-            // if let Some(notif) = state.notification.as_ref() {
-            //     Some(notif.message.to_owned())
-            // } else {
-            //     None
-            // }
-        });
+        main_page_event_assertion(
+            &events,
+            Arc::new(Mutex::new(store)),
+            |state: &ApplicationState| {
+                state.notification.is_some()
+                // if let Some(notif) = state.notification.as_ref() {
+                //     Some(notif.message.to_owned())
+                // } else {
+                //     None
+                // }
+            },
+        );
     }
 
-    fn main_page_event_assertion<AssertResult: PartialEq + std::fmt::Debug, F: Fn(&ApplicationState) -> AssertResult>(
-        events: &[(Key, AssertResult)], lstore: SharedAppStateStore, state_fn: F
+    fn main_page_event_assertion<
+        AssertResult: PartialEq + std::fmt::Debug,
+        F: Fn(&ApplicationState) -> AssertResult,
+    >(
+        events: &[(Key, AssertResult)],
+        lstore: SharedAppStateStore,
+        state_fn: F,
     ) {
-
         let mut store = lstore.lock().unwrap();
         for n in 0..30u8 {
-            store.state.hosts.push(Host::new(Ipv4Addr::new(10, 0, 0, n)))
+            store
+                .state
+                .hosts
+                .push(Host::new(Ipv4Addr::new(10, 0, 0, n)))
         }
 
         for (event, result) in events {
             // let lstore1 = store_mtx.clone();
             handle_main_page_event(*event, store.deref_mut(), lstore.clone());
             let res = state_fn(&store.state);
-            assert_eq!(res, *result, "Testing event {:?}: {:?} vs {:?}", event, res, *result);
+            assert_eq!(
+                res, *result,
+                "Testing event {:?}: {:?} vs {:?}",
+                event, res, *result
+            );
         }
     }
 }
