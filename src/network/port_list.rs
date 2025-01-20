@@ -3,6 +3,59 @@ use lazy_static::lazy_static;
 #[cfg(feature = "port_desc")]
 use std::collections::HashMap;
 
+#[derive(Debug, Default)]
+pub struct TcpPortUsage {
+    pub port: u16,
+    pub desc: &'static str,
+    pub common: bool,
+}
+
+impl TcpPortUsage {
+    pub fn new(port: u16, desc: &'static str, common: bool) -> TcpPortUsage {
+        TcpPortUsage {
+            port: port,
+            desc: desc,
+            common: common,
+        }
+    }
+}
+
+// lazy_static! {
+//     static ref PPORT_LIST: HashMap<u16, &'static TcpPortUsage> = {
+//         let mut map = HashMap::new();
+//         map.insert(2, TcpPortUsage::new(1, "bar", true));
+//         map.insert(
+//             1,
+//             TcpPortUsage::new(1, "TCP Port Service Multiplexer", false),
+//         );
+//         map.insert(2, TcpPortUsage::new(2, "Management Utility", false));
+//         map.insert(3, TcpPortUsage::new(3, "Compression Process", false));
+//         map.insert(5, TcpPortUsage::new(5, "Remote Job Entry", false));
+//         map.insert(7, TcpPortUsage::new(7, "Echo", false));
+//         map.insert(9, TcpPortUsage::new(9, "Discard", false));
+//         map.insert(11, TcpPortUsage::new(11, "Active Users", false));
+//         map.insert(13, TcpPortUsage::new(13, "Daytime", false));
+//         map.insert(15, TcpPortUsage::new(15, "Unassigned [was netstat]", false));
+//         map.insert(17, TcpPortUsage::new(17, "Quote of the Day", false));
+//         map.insert(
+//             18,
+//             TcpPortUsage::new(18, "Message Send Protocol (historic)", false),
+//         );
+//         map.insert(19, TcpPortUsage::new(19, "Character Generator", false));
+//         map.insert(20, TcpPortUsage::new(20, "FTP", false));
+//         map.insert(21, TcpPortUsage::new(21, "FTP", false));
+//         map.insert(22, TcpPortUsage::new(22, "SSH", false));
+//         map.insert(23, TcpPortUsage::new(23, "Telnet", false));
+//         map.insert(24, TcpPortUsage::new(24, "any private mail system", false));
+//         map.insert(25, TcpPortUsage::new(25, "Simple Mail Transfer", false));
+//         map.insert(27, TcpPortUsage::new(27, "NSW User System FE", false));
+//         map.insert(29, TcpPortUsage::new(29, "MSG ICP", false));
+//         map.insert(31, TcpPortUsage::new(31, "MSG Authentication", false));
+//         map.insert(33, TcpPortUsage::new(33, "Display Support Protocol", false));
+//         map
+//     };
+// }
+
 #[cfg(feature = "port_desc")]
 lazy_static! {
     static ref PORT_LIST: HashMap<u16, &'static str> = {
@@ -1072,7 +1125,7 @@ lazy_static! {
         map.insert(1397, "Audio Active Mail");
         map.insert(1398, "Video Active Mail");
         map.insert(1399, "Cadkey License Manager");
-        map.insert(1400, "Cadkey Tablet Daemon");
+        map.insert(1400, "Sonos Control App");
         map.insert(1401, "Goldleaf License Manager");
         map.insert(1402, "Prospero Resource Manager");
         map.insert(1403, "Prospero Resource Manager");
@@ -1836,7 +1889,10 @@ lazy_static! {
         map.insert(2166, "iwserver");
         map.insert(2167, "Raw Async Serial Link");
         map.insert(2168, "easy-soft Multiplexer");
-        map.insert(2169, "Backbone for Academic Information Notification (BRAIN)");
+        map.insert(
+            2169,
+            "Backbone for Academic Information Notification (BRAIN)",
+        );
         map.insert(2170, "EyeTV Server Port");
         map.insert(2171, "MS Firewall Storage");
         map.insert(2172, "MS Firewall SecureStorage");
@@ -2453,7 +2509,10 @@ lazy_static! {
         map.insert(2801, "IGCP");
         map.insert(2802, "Veritas UDP1");
         map.insert(2803, "btprjctrl");
-        map.insert(2804, "March Networks Digital Video Recorders and Enterprise Service Manager products");
+        map.insert(
+            2804,
+            "March Networks Digital Video Recorders and Enterprise Service Manager products",
+        );
         map.insert(2805, "WTA WSP-S");
         map.insert(2806, "cspuni");
         map.insert(2807, "cspmulti");
@@ -2873,7 +2932,10 @@ lazy_static! {
         map.insert(3228, "DiamondWave MSG Server");
         map.insert(3229, "Global CD Port");
         map.insert(3230, "Software Distributor Port");
-        map.insert(3231, "VidiGo communication (previous was: Delta Solutions Direct)");
+        map.insert(
+            3231,
+            "VidiGo communication (previous was: Delta Solutions Direct)",
+        );
         map.insert(3232, "MDT port");
         map.insert(3233, "WhiskerControl main port");
         map.insert(3234, "Alchemy Server");
@@ -3040,8 +3102,8 @@ lazy_static! {
         map.insert(3397, "Cloanto License Manager");
         map.insert(3398, "Mercantile");
         map.insert(3399, "CSMS");
-        map.insert(3400, "CSMS2");
-        map.insert(3401, "filecast");
+        map.insert(3400, "Sonos Control App");
+        map.insert(3401, "Sonos Control App");
         map.insert(3402, "FXa Engine Network Port");
         map.insert(3403, "De-registered");
         map.insert(3404, "Removed");
@@ -3140,7 +3202,7 @@ lazy_static! {
         map.insert(3497, "ipEther232Port");
         map.insert(3498, "DASHPAS user port");
         map.insert(3499, "SccIP Media");
-        map.insert(3500, "RTMP Port");
+        map.insert(3500, "Sonos Control App");
         map.insert(3501, "iSoft-P2P");
         map.insert(3502, "Avocent Install Discovery");
         map.insert(3503, "MPLS LSP-echo Port");
@@ -3701,7 +3763,7 @@ lazy_static! {
         map.insert(4067, "Information Distribution Protocol");
         map.insert(4068, "IP Fleet Broadcast");
         map.insert(4069, "Minger Email Address Validation Service");
-        map.insert(4070, "Trivial IP Encryption (TrIPE)");
+        map.insert(4070, "Spotify Connect or Trivial IP Encryption (TrIPE)");
         map.insert(4071, "Automatically Incremental Backup");
         map.insert(4072, "Zieto Socket Communications");
         map.insert(4073, "Interactive Remote Application Pairing Protocol");
@@ -4042,7 +4104,10 @@ lazy_static! {
         map.insert(4599, "A17 (AN-AN)");
         map.insert(4600, "Piranha1");
         map.insert(4601, "Piranha2");
-        map.insert(4621, "Bidirectional single port remote radio VOIP and Control stream");
+        map.insert(
+            4621,
+            "Bidirectional single port remote radio VOIP and Control stream",
+        );
         map.insert(4658, "PlayStation2 App Port");
         map.insert(4659, "PlayStation2 Lobby Port");
         map.insert(4660, "smaclmgr");
@@ -4103,7 +4168,10 @@ lazy_static! {
         map.insert(4750, "Simple Service Auto Discovery");
         map.insert(4751, "Simple Policy Control Protocol");
         map.insert(4752, "Simple Network Audio Protocol");
-        map.insert(4753, "Simple Invocation of Methods Over Network (SIMON) Discovery");
+        map.insert(
+            4753,
+            "Simple Invocation of Methods Over Network (SIMON) Discovery",
+        );
         map.insert(4754, "GRE-in-UDP Encapsulation");
         map.insert(4755, "GRE-in-UDP Encapsulation with DTLS");
         map.insert(4784, "BFD Multihop Control");
@@ -4362,7 +4430,10 @@ lazy_static! {
         map.insert(5436, "pmip6-cntl");
         map.insert(5437, "pmip6-data");
         map.insert(5443, "Pearson HTTPS");
-        map.insert(5445, "Server Message Block over Remote Direct Memory Access");
+        map.insert(
+            5445,
+            "Server Message Block over Remote Direct Memory Access",
+        );
         map.insert(5450, "TiePie engineering data acquisition (discovery)");
         map.insert(5453, "SureBox");
         map.insert(5454, "APC 5454");
@@ -4567,7 +4638,10 @@ lazy_static! {
         map.insert(6072, "DIAGNOSE-PROC");
         map.insert(6073, "DirectPlay8");
         map.insert(6074, "Microsoft Max");
-        map.insert(6082, "APCO Project 25 Common Air Interface - UDP encapsulation");
+        map.insert(
+            6082,
+            "APCO Project 25 Common Air Interface - UDP encapsulation",
+        );
         map.insert(6083, "telecomsoftware miami broadcast");
         map.insert(6085, "konspire2b p2p network");
         map.insert(6086, "PDTP P2P");
@@ -4600,12 +4674,18 @@ lazy_static! {
         map.insert(6147, "Montage License Manager");
         map.insert(6148, "Ricardo North America License Manager");
         map.insert(6149, "tal-pod");
-        map.insert(6160, "Emerson Extensible Control and Management Protocol Data");
+        map.insert(
+            6160,
+            "Emerson Extensible Control and Management Protocol Data",
+        );
         map.insert(6161, "PATROL Internet Srv Mgr");
         map.insert(6162, "PATROL Collector");
         map.insert(6163, "Precision Scribe Cnx Port");
         map.insert(6200, "LM-X License Manager by X-Formation");
-        map.insert(6201, "Management of service nodes in a processing grid for thermodynamic calculations");
+        map.insert(
+            6201,
+            "Management of service nodes in a processing grid for thermodynamic calculations",
+        );
         map.insert(6209, "QMTP over TLS");
         map.insert(6222, "Radmind Access Protocol");
         map.insert(6241, "JEOL Network Services Dynamic Discovery Protocol 1");
@@ -4680,7 +4760,10 @@ lazy_static! {
         map.insert(6508, "BoKS Dir Server, Public Port");
         map.insert(6509, "MGCS-MFP Port");
         map.insert(6510, "MCER Port");
-        map.insert(6511, "Datagram Congestion Control Protocol Encapsulation for NAT Traversal");
+        map.insert(
+            6511,
+            "Datagram Congestion Control Protocol Encapsulation for NAT Traversal",
+        );
         map.insert(6514, "syslog over DTLS");
         map.insert(6515, "Elipse RPC Protocol");
         map.insert(6543, "lds_distrib");
@@ -4706,7 +4789,10 @@ lazy_static! {
         map.insert(6626, "WAGO Service and Update");
         map.insert(6627, "Allied Electronics NeXGen");
         map.insert(6628, "AFE Stock Channel M/C");
-        map.insert(6629, "Secondary, (non ANDI) multi-protocol multi-function interface to");
+        map.insert(
+            6629,
+            "Secondary, (non ANDI) multi-protocol multi-function interface to",
+        );
         map.insert(6633, "Cisco vPath Services Overlay");
         map.insert(6635, "Encapsulate MPLS packets in UDP tunnels.");
         map.insert(6636, "Encapsulate MPLS packets in UDP tunnels with DTLS.");
@@ -4733,7 +4819,10 @@ lazy_static! {
         map.insert(6769, "ADInstruments GxP Server");
         map.insert(6770, "PolyServe http");
         map.insert(6771, "PolyServe https");
-        map.insert(6784, "Bidirectional Forwarding Detection (BFD) on Link Aggregation Group (LAG) Interfaces");
+        map.insert(
+            6784,
+            "Bidirectional Forwarding Detection (BFD) on Link Aggregation Group (LAG) Interfaces",
+        );
         map.insert(6785, "DGPF Individual Exchange");
         map.insert(6786, "Sun Java Web Console JMX");
         map.insert(6787, "Sun Web Console Admin");
@@ -4813,7 +4902,10 @@ lazy_static! {
         map.insert(7174, "Clutild");
         map.insert(7200, "FODMS FLIP");
         map.insert(7201, "DLIP");
-        map.insert(7202, "Inter-Channel Termination Protocol (ICTP) for multi-wavelength PON");
+        map.insert(
+            7202,
+            "Inter-Channel Termination Protocol (ICTP) for multi-wavelength PON",
+        );
         map.insert(7227, "Registry A $ M Protocol");
         map.insert(7244, "FrontRow Calypso Human Interface Control Protocol");
         map.insert(7262, "Calypso Network Access Protocol");
@@ -4987,7 +5079,10 @@ lazy_static! {
         map.insert(7913, "QuickObjects secure port");
         map.insert(7932, "Tier 2 Data Resource Manager");
         map.insert(7933, "Tier 2 Business Rules Manager");
-        map.insert(7962, "Encrypted, extendable, general-purpose synchronization protocol");
+        map.insert(
+            7962,
+            "Encrypted, extendable, general-purpose synchronization protocol",
+        );
         map.insert(7967, "Supercell");
         map.insert(7979, "Micromuse-ncps");
         map.insert(7980, "Quest Vista");
@@ -5108,7 +5203,10 @@ lazy_static! {
         map.insert(8612, "Canon BJNP Port 2");
         map.insert(8613, "Canon BJNP Port 3");
         map.insert(8614, "Canon BJNP Port 4");
-        map.insert(8675, "Motorola Solutions Customer Programming Software for Radio Management Discovery");
+        map.insert(
+            8675,
+            "Motorola Solutions Customer Programming Software for Radio Management Discovery",
+        );
         map.insert(8686, "Sun App Server - JMX/RMI");
         map.insert(8732, "DASGIP Net Services");
         map.insert(8733, "iBus");
@@ -5276,7 +5374,10 @@ lazy_static! {
         map.insert(9875, "Session Announcement v1");
         map.insert(9876, "Session Director");
         map.insert(9888, "CYBORG Systems");
-        map.insert(9889, "Port for Cable network related data proxy or repeater");
+        map.insert(
+            9889,
+            "Port for Cable network related data proxy or repeater",
+        );
         map.insert(9898, "MonkeyCom");
         map.insert(9899, "SCTP TUNNELING");
         map.insert(9900, "IUA");
@@ -5289,7 +5390,10 @@ lazy_static! {
         map.insert(9951, "APC 9951");
         map.insert(9952, "APC 9952");
         map.insert(9953, "9953");
-        map.insert(9955, "Contact Port for AllJoyn multiplexed constrained messaging");
+        map.insert(
+            9955,
+            "Contact Port for AllJoyn multiplexed constrained messaging",
+        );
         map.insert(9956, "Alljoyn Name Service");
         map.insert(9966, "OKI Data Network Setting Protocol");
         map.insert(9987, "DSM/SCM Target Interface");
@@ -5350,7 +5454,10 @@ lazy_static! {
         map.insert(10990, "Auxiliary RMI Port");
         map.insert(11000, "IRISA");
         map.insert(11001, "Metasys");
-        map.insert(11095, "Nest device-to-device and device-to-service application protocol");
+        map.insert(
+            11095,
+            "Nest device-to-device and device-to-service application protocol",
+        );
         map.insert(11106, "SGI LK Licensing service");
         map.insert(11111, "Viral Computing Environment (VCE)");
         map.insert(11112, "DICOM");
@@ -5436,7 +5543,10 @@ lazy_static! {
         map.insert(14936, "hde-lcesrvr-1");
         map.insert(14937, "hde-lcesrvr-2");
         map.insert(15000, "Hypack Data Aquisition");
-        map.insert(15118, "v2g Supply Equipment Communication Controller Discovery Protocol");
+        map.insert(
+            15118,
+            "v2g Supply Equipment Communication Controller Discovery Protocol",
+        );
         map.insert(15345, "XPilot Contact Port");
         map.insert(15363, "3Link Negotiation");
         map.insert(15555, "Cisco Stateful NAT");
@@ -5464,8 +5574,14 @@ lazy_static! {
         map.insert(17007, "isode-dua");
         map.insert(17185, "Sounds Virtual");
         map.insert(17219, "Chipper");
-        map.insert(17220, "IEEE 1722 Transport Protocol for Time Sensitive Applications");
-        map.insert(17221, "IEEE 1722.1 AVB Discovery, Enumeration, Connection management, and Control");
+        map.insert(
+            17220,
+            "IEEE 1722 Transport Protocol for Time Sensitive Applications",
+        );
+        map.insert(
+            17221,
+            "IEEE 1722.1 AVB Discovery, Enumeration, Connection management, and Control",
+        );
         map.insert(17222, "Control Plane Synchronization Protocol (SPSP)");
         map.insert(17225, "Train Realtime Data Protocol (TRDP) Message Data");
         map.insert(17234, "Integrius Secure Tunnel Protocol");
@@ -5496,7 +5612,10 @@ lazy_static! {
         map.insert(19007, "Scintilla protocol for device services");
         map.insert(19191, "OPSEC UAA");
         map.insert(19194, "UserAuthority SecureAgent");
-        map.insert(19220, "Discovery for Client Connection Management and Data Exchange Service");
+        map.insert(
+            19220,
+            "Discovery for Client Connection Management and Data Exchange Service",
+        );
         map.insert(19283, "Key Server for SASSAFRAS");
         map.insert(19315, "Key Shadow for SASSAFRAS");
         map.insert(19398, "mtrgtrans");
@@ -5598,7 +5717,10 @@ lazy_static! {
         map.insert(25902, "NILinkAnalyst");
         map.insert(25903, "NIProbe");
         map.insert(26000, "quake");
-        map.insert(26133, "Symbolic Computation Software Composability Protocol");
+        map.insert(
+            26133,
+            "Symbolic Computation Software Composability Protocol",
+        );
         map.insert(26208, "wnn6-ds");
         map.insert(26260, "eZproxy");
         map.insert(26261, "eZmeeting");
@@ -5730,8 +5852,14 @@ lazy_static! {
         map.insert(44553, "REALbasic Remote Debug");
         map.insert(44600, "AudioScience HPI");
         map.insert(44818, "EtherNet/IP messaging");
-        map.insert(44900, "M3DA Discovery is used for efficient machine-to-machine communications");
-        map.insert(45000, "Nuance AutoStore Status Monitoring Protocol (device monitoring)");
+        map.insert(
+            44900,
+            "M3DA Discovery is used for efficient machine-to-machine communications",
+        );
+        map.insert(
+            45000,
+            "Nuance AutoStore Status Monitoring Protocol (device monitoring)",
+        );
         map.insert(45054, "InVision AG");
         map.insert(45514, "ASSIA CloudCheck WiFi Management keepalive");
         map.insert(45678, "EBA PRISE");
@@ -5756,6 +5884,16 @@ lazy_static! {
         map.insert(49151, "IANA Reserved");
         map
     };
+}
+
+lazy_static! {
+    pub static ref COMMON_PORTS: Vec<u16> = vec![
+        7, 19, 20, 21, 22, 23, 25, 42, 43, 49, 53, 67, 68, 69, 70, 79, 80, 88, 102, 110, 113, 119,
+        123, 135, 137, 138, 139, 143, 161, 162, 177, 179, 194, 201, 264, 318, 381, 383, 389, 411,
+        412, 427, 443, 445, 464, 465, 497, 500, 512, 513, 514, 515, 520, 521, 540, 548, 554, 546,
+        547, 560, 563, 587, 591, 593, 596, 631, 636, 639, 646, 691, 860, 873, 902, 989, 990, 993,
+        995, 1400,
+    ];
 }
 
 #[cfg(feature = "port_desc")]

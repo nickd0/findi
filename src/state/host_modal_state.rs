@@ -7,7 +7,8 @@ use std::time::Duration;
 pub enum HostModalAction {
     SetSelected(usize),
     SetPortQueryInput(Key),
-    SetPortScanResult(TcpPortScanResult)
+    SetPortScanResult(TcpPortScanResult),
+    SetCommonPortsForScanning,
 }
 
 #[derive(Clone, Debug)]
@@ -25,21 +26,25 @@ pub struct HostModalState {
     pub port_query: String,
     pub selected_component: usize,
     pub ports: Vec<TcpPortScanResult>,
-    pub port_query_run: bool
+    pub port_query_run: bool,
 }
 
 impl HostModalState {
     pub fn new(host: Host) -> Self {
         HostModalState {
             tab_state: TabsState {
-                titles: vec!["Host info".to_owned(), "TCP port scan".to_owned()],
+                titles: vec![
+                    "Host info".to_owned(),
+                    "Common TCP port scan".to_owned(),
+                    "TCP port scan".to_owned(),
+                ],
                 index: 0,
             },
             selected_host: host,
             port_query: String::new(),
             selected_component: 0,
             ports: Vec::new(),
-            port_query_run: false
+            port_query_run: false,
         }
     }
 }

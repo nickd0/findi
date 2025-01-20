@@ -1,19 +1,17 @@
 use super::actions::{Action, AppAction};
 use super::application_state::ApplicationState;
-use super::host_modal_state::{HostModalState, HostModalAction};
-use crate::network::{
-    host::Host,
-    tcp_ping::parse_portlist
-};
+use super::host_modal_state::{HostModalAction, HostModalState};
+use crate::network::port_list::COMMON_PORTS;
+use crate::network::{host::Host, tcp_ping::parse_portlist};
 
 use crate::ui::{
-    notification::Notification,
+    event::Key,
     modal::{Modal, ModalType},
-    event::Key
+    notification::Notification,
 };
 
 pub trait Reducer<T: Action> {
-  fn reduce(action: T, state: ApplicationState) -> ApplicationState;
+    fn reduce(action: T, state: ApplicationState) -> ApplicationState;
 }
 
 pub enum AppReducer {}
@@ -23,9 +21,9 @@ impl Reducer<AppAction> for AppReducer {
     fn reduce(action: AppAction, mut state: ApplicationState) -> ApplicationState {
         match action {
             AppAction::BuildHosts(hosts) => {
-                state.hosts = hosts.iter().map(|h| Host::new(*h) ).collect();
+                state.hosts = hosts.iter().map(|h| Host::new(*h)).collect();
                 state
-            },
+            }
 
             // TODO: O(n), use a hashed data structure?
             AppAction::UpdateHost(host) => {
@@ -33,64 +31,63 @@ impl Reducer<AppAction> for AppReducer {
                     state.hosts[idx] = host;
                 }
                 state
-            },
+            }
 
             AppAction::SetQuery(query) => {
                 state.query = query;
                 state
-            },
+            }
 
             AppAction::SetPortQuery(pquery) => {
                 match pquery {
-                    Some(somepq) => {
-                        match parse_portlist(&somepq) {
-                            Ok(ports) => state.port_query = ports,
-                            Err(_) => {}
-                        }
+                    Some(somepq) => match parse_portlist(&somepq) {
+                        Ok(ports) => state.port_query = ports,
+                        Err(_) => {}
                     },
-                    None => state.port_query.clear()
+                    None => state.port_query.clear(),
                 }
                 state
-            },
+            }
 
             AppAction::SetInputErr(err) => {
                 state.input_err = err;
                 state
-            },
+            }
 
-            AppAction::IterateFocus => {
-                state
-            },
+            AppAction::IterateFocus => state,
 
             AppAction::SetHostSearchRun(run) => {
                 state.search_run = run;
                 if run {
-                    let notif = Notification::info("Status", format!("Querying {} hosts...", state.hosts.len()).as_ref());
+                    let notif = Notification::info(
+                        "Status",
+                        format!("Querying {} hosts...", state.hosts.len()).as_ref(),
+                    );
                     state.notification = Some(notif)
                 }
                 state
-            },
+            }
 
             AppAction::NewQuery(hosts) => {
-                state.hosts = hosts.iter().map(|h| Host::new(*h) ).collect();
+                state.hosts = hosts.iter().map(|h| Host::new(*h)).collect();
                 state.search_run = true;
                 state
-            },
+            }
 
             AppAction::TableSelect(idx) => {
                 state.table_state.select(idx);
                 state
-            },
+            }
 
             AppAction::ShiftFocus(comp) => {
                 state.curr_focus = comp;
                 state
-            },
+            }
 
             AppAction::SetNotification(notif) => {
                 state.notification = notif;
                 state
-            },
+            }
 
             AppAction::SetModal(modal) => {
                 if modal.is_none() {
@@ -99,7 +96,7 @@ impl Reducer<AppAction> for AppReducer {
                 }
                 state.modal = modal;
                 state
-            },
+            }
 
             AppAction::QueryComplete => {
                 let notif = Notification::info("Status", "Host search complete");
@@ -107,27 +104,32 @@ impl Reducer<AppAction> for AppReducer {
                 state.search_run = false;
                 state.notification = Some(notif);
                 state
-            },
+            }
 
             AppAction::SetSearchFilter(opt) => {
                 state.search_filter_opt = opt;
                 state
-            },
+            }
 
             AppAction::SetSelectedHost(host) => {
                 state.selected_host = host;
                 match state.selected_host {
                     Some(_) => {
-                        state.modal = Some(Modal::new("Host info", "Host information", ModalType::Custom));
-                        state.modal_state = Some(HostModalState::new(state.get_selected_host().unwrap()));
-                    },
+                        state.modal = Some(Modal::new(
+                            "Host info",
+                            "Host information",
+                            ModalType::Custom,
+                        ));
+                        state.modal_state =
+                            Some(HostModalState::new(state.get_selected_host().unwrap()));
+                    }
                     None => {
                         state.modal = None;
                         state.modal_state = None;
                     }
                 }
                 state
-            },
+            }
 
             AppAction::SetModalAction(action) => {
                 let mut modal_state = state.modal_state.clone().unwrap();
@@ -135,7 +137,7 @@ impl Reducer<AppAction> for AppReducer {
                     HostModalAction::SetSelected(idx) => {
                         modal_state.tab_state.index = idx;
                         state.modal_state = Some(modal_state);
-                    },
+                    }
 
                     HostModalAction::SetPortQueryInput(key) => {
                         match key {
@@ -143,54 +145,71 @@ impl Reducer<AppAction> for AppReducer {
                             Key::Backspace => {
                                 let qlen = modal_state.port_query.len();
                                 if qlen > 0 {
-                                    modal_state.port_query = modal_state.port_query[..qlen - 1].to_string()
+                                    modal_state.port_query =
+                                        modal_state.port_query[..qlen - 1].to_string()
                                 }
-                            },
+                            }
                             _ => {}
                         }
 
-                        if let Ok(ports) =  parse_portlist(&modal_state.port_query) {
+                        // TODO: don't need to do this every time an input event happens?
+                        if let Ok(ports) = parse_portlist(&modal_state.port_query) {
                             // TODO: performance evaluation
                             modal_state.ports = ports.iter().map(|p| (*p, None)).collect();
                         }
 
                         state.modal_state = Some(modal_state);
-                    },
+                    }
 
                     HostModalAction::SetPortScanResult(res) => {
                         // TODO: Another O(n) operation
                         if let Some(idx) = modal_state.ports.iter().position(|p| p.0 == res.0) {
                             modal_state.ports[idx] = res;
+                            eprintln!("GOT A PORT: idx {0} port {1}", idx, res.0);
 
                             // Add to active TCP ports
                             if let Some(Ok(_)) = res.1 {
-                                if let Some(idx) = state.hosts.iter().position(|h| h.ip == modal_state.selected_host.ip) {
+                                if let Some(idx) = state
+                                    .hosts
+                                    .iter()
+                                    .position(|h| h.ip == modal_state.selected_host.ip)
+                                {
                                     state.hosts[idx].tcp_ports.insert(res.0);
                                 }
                             }
+                        } else {
+                            modal_state.ports.push(res);
                         }
 
                         state.modal_state = Some(modal_state);
                     }
+
+                    // TODO use this for custom port query
+                    HostModalAction::SetCommonPortsForScanning => {
+                        for port in COMMON_PORTS.iter() {
+                            modal_state.ports.push((*port, None));
+                        }
+                        state.modal_state = Some(modal_state);
+                    }
                 }
                 state
-            },
+            }
 
             AppAction::SetConfig(config) => {
                 state.app_config = config;
                 state
-            },
+            }
 
             AppAction::SetConfigNWorkers(nworkers) => {
                 state.app_config.nworkers = nworkers;
                 state
-            },
+            }
 
             AppAction::SetConfigTick(tick_len) => {
                 state.app_config.tick_len = tick_len;
                 state
-            },
-            _ => state
+            }
+            _ => state,
         }
     }
 }
@@ -202,10 +221,13 @@ mod test {
 
     const DEFAULT_ADDR: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 1);
 
-    fn test_helper_reduce_state(action: AppAction, init_state: Option<ApplicationState>) -> ApplicationState {
+    fn test_helper_reduce_state(
+        action: AppAction,
+        init_state: Option<ApplicationState>,
+    ) -> ApplicationState {
         let state = match init_state {
             Some(state) => state,
-            None => ApplicationState::default()
+            None => ApplicationState::default(),
         };
 
         AppReducer::reduce(action, state.clone())
@@ -227,7 +249,7 @@ mod test {
         let action = AppAction::SetPortQuery(Some(port_q.to_owned()));
         let new_state = test_helper_reduce_state(action, None);
 
-        assert_eq!(new_state.port_query, vec![10,11,12]);
+        assert_eq!(new_state.port_query, vec![10, 11, 12]);
     }
 
     #[test]
@@ -251,7 +273,10 @@ mod test {
         // Run ON
         let action = AppAction::SetHostSearchRun(true);
         let new_state = test_helper_reduce_state(action, None);
-        assert_eq!(new_state.notification.unwrap().message, "Querying 0 hosts...".to_owned());
+        assert_eq!(
+            new_state.notification.unwrap().message,
+            "Querying 0 hosts...".to_owned()
+        );
 
         // Run OFF
         let action1 = AppAction::SetHostSearchRun(false);
@@ -266,7 +291,10 @@ mod test {
 
         assert_eq!(new_state.query_state, true);
         assert_eq!(new_state.search_run, false);
-        assert_eq!(new_state.notification.unwrap().message, "Host search complete");
+        assert_eq!(
+            new_state.notification.unwrap().message,
+            "Host search complete"
+        );
     }
 
     #[test]

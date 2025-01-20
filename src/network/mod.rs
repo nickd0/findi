@@ -1,30 +1,29 @@
-pub mod ping_result;
-pub mod udp_ping;
-pub mod tcp_ping;
-pub mod host;
 pub mod dns;
+pub mod host;
+pub mod ping_result;
 pub mod port_list;
+pub mod tcp_ping;
+pub mod udp_ping;
 
 use crate::state::{
-    host_modal_state::{HostModalState, HostModalAction},
-    store::SharedAppStateStore
+    host_modal_state::{HostModalAction, HostModalState},
+    modal_state,
+    store::SharedAppStateStore,
 };
 
 use crate::network::host::Host;
-use crate::state::{
-    actions::AppAction
-};
+use crate::state::actions::AppAction;
 use crate::GLOBAL_RUN;
 
-use std::time::Duration;
+use std::sync::atomic::Ordering;
 use std::thread;
-use std::sync::{
-    atomic::Ordering,
-};
+use std::time::Duration;
 
-use threadpool::ThreadPool;
+use anyhow::{anyhow, Result};
+use clap::App;
 use pnet::ipnetwork::IpNetwork;
-use anyhow::{Result, anyhow};
+use port_list::COMMON_PORTS;
+use threadpool::ThreadPool;
 
 use std::net::Ipv4Addr;
 
@@ -34,12 +33,17 @@ pub fn input_parse(input: &str) -> Result<Vec<Ipv4Addr>> {
     if let Ok(IpNetwork::V4(ipn)) = input.parse::<IpNetwork>() {
         // This is sort of an arbitrary limit, could be higher?
         if ipn.size() > MAX_IPNETWORK_SIZE {
-            return Err(anyhow!("Network is larger than max size of 4096 IP addresses ({})", ipn.size()))
+            return Err(anyhow!(
+                "Network is larger than max size of 4096 IP addresses ({})",
+                ipn.size()
+            ));
         }
 
         // Validate only private networks for now
         if !ipn.network().is_private() {
-            return Err(anyhow!("Only private IP networks as defined in IETF RFC1918 can be scanned for now"))
+            return Err(anyhow!(
+                "Only private IP networks as defined in IETF RFC1918 can be scanned for now"
+            ));
         }
         Ok(ipn.iter().collect())
     } else {
@@ -83,7 +87,7 @@ pub fn init_host_search(store: SharedAppStateStore) {
         for host in hosts {
             let lstore = store.lock().unwrap();
             if !GLOBAL_RUN.load(Ordering::Acquire) || !lstore.state.search_run {
-                break
+                break;
             }
             drop(lstore);
 
@@ -94,7 +98,7 @@ pub fn init_host_search(store: SharedAppStateStore) {
                 let localstore = store_copy.lock().unwrap();
                 let port_query = localstore.state.port_query.clone();
                 if !localstore.state.search_run {
-                    return
+                    return;
                 }
                 drop(localstore);
 
@@ -102,14 +106,18 @@ pub fn init_host_search(store: SharedAppStateStore) {
 
                 for port in port_query {
                     match tcp_ping::tcp_scan_port(&h.ip, port) {
-                        Ok(_) => { h.tcp_ports.insert(port); },
+                        Ok(_) => {
+                            h.tcp_ports.insert(port);
+                        }
                         Err(_) => {}
                     }
                 }
 
-                store_copy.lock().unwrap().dispatch(AppAction::UpdateHost(h));
+                store_copy
+                    .lock()
+                    .unwrap()
+                    .dispatch(AppAction::UpdateHost(h));
             });
-
         }
         pool.join();
         // Need to check if the query was interrupted or not
@@ -129,14 +137,47 @@ pub fn dispatch_port_scan(store: SharedAppStateStore) {
             let port_run = store.lock().unwrap().state.modal_state.is_none();
 
             if !GLOBAL_RUN.load(Ordering::Acquire) || port_run {
-                break
+                break;
             }
 
             match tcp_ping::tcp_scan_port(&modal_state.selected_host.ip, port) {
-                Ok(dur) => store.lock().unwrap().dispatch(AppAction::SetModalAction(HostModalAction::SetPortScanResult((port, Some(Ok(dur)))))),
-                Err(_) => store.lock().unwrap().dispatch(AppAction::SetModalAction(HostModalAction::SetPortScanResult((port, Some(Err(())))))),
+                Ok(dur) => store.lock().unwrap().dispatch(AppAction::SetModalAction(
+                    HostModalAction::SetPortScanResult((port, Some(Ok(dur)))),
+                )),
+                Err(_) => store.lock().unwrap().dispatch(AppAction::SetModalAction(
+                    HostModalAction::SetPortScanResult((port, Some(Err(())))),
+                )),
             }
 
+            thread::sleep(Duration::from_millis(10));
+        }
+    });
+}
+
+pub fn dispatch_common_port_scan(store: SharedAppStateStore) {
+    thread::spawn(move || {
+        let mut lstore = store.lock().unwrap();
+        lstore.dispatch(AppAction::SetModalAction(
+            HostModalAction::SetCommonPortsForScanning,
+        ));
+        let modal_state: HostModalState = lstore.state.modal_state.clone().unwrap();
+        // don't lock up other threads
+        drop(lstore);
+
+        for port in COMMON_PORTS.iter() {
+            let port_run = store.lock().unwrap().state.modal_state.is_none();
+
+            if !GLOBAL_RUN.load(Ordering::Acquire) || port_run {
+                break;
+            }
+            match tcp_ping::tcp_scan_port(&modal_state.selected_host.ip, *port) {
+                Ok(dur) => store.lock().unwrap().dispatch(AppAction::SetModalAction(
+                    HostModalAction::SetPortScanResult((*port, Some(Ok(dur)))),
+                )),
+                Err(_) => store.lock().unwrap().dispatch(AppAction::SetModalAction(
+                    HostModalAction::SetPortScanResult((*port, Some(Err(())))),
+                )),
+            }
             thread::sleep(Duration::from_millis(10));
         }
     });
