@@ -3,59 +3,6 @@ use lazy_static::lazy_static;
 #[cfg(feature = "port_desc")]
 use std::collections::HashMap;
 
-#[derive(Debug, Default)]
-pub struct TcpPortUsage {
-    pub port: u16,
-    pub desc: &'static str,
-    pub common: bool,
-}
-
-impl TcpPortUsage {
-    pub fn new(port: u16, desc: &'static str, common: bool) -> TcpPortUsage {
-        TcpPortUsage {
-            port: port,
-            desc: desc,
-            common: common,
-        }
-    }
-}
-
-// lazy_static! {
-//     static ref PPORT_LIST: HashMap<u16, &'static TcpPortUsage> = {
-//         let mut map = HashMap::new();
-//         map.insert(2, TcpPortUsage::new(1, "bar", true));
-//         map.insert(
-//             1,
-//             TcpPortUsage::new(1, "TCP Port Service Multiplexer", false),
-//         );
-//         map.insert(2, TcpPortUsage::new(2, "Management Utility", false));
-//         map.insert(3, TcpPortUsage::new(3, "Compression Process", false));
-//         map.insert(5, TcpPortUsage::new(5, "Remote Job Entry", false));
-//         map.insert(7, TcpPortUsage::new(7, "Echo", false));
-//         map.insert(9, TcpPortUsage::new(9, "Discard", false));
-//         map.insert(11, TcpPortUsage::new(11, "Active Users", false));
-//         map.insert(13, TcpPortUsage::new(13, "Daytime", false));
-//         map.insert(15, TcpPortUsage::new(15, "Unassigned [was netstat]", false));
-//         map.insert(17, TcpPortUsage::new(17, "Quote of the Day", false));
-//         map.insert(
-//             18,
-//             TcpPortUsage::new(18, "Message Send Protocol (historic)", false),
-//         );
-//         map.insert(19, TcpPortUsage::new(19, "Character Generator", false));
-//         map.insert(20, TcpPortUsage::new(20, "FTP", false));
-//         map.insert(21, TcpPortUsage::new(21, "FTP", false));
-//         map.insert(22, TcpPortUsage::new(22, "SSH", false));
-//         map.insert(23, TcpPortUsage::new(23, "Telnet", false));
-//         map.insert(24, TcpPortUsage::new(24, "any private mail system", false));
-//         map.insert(25, TcpPortUsage::new(25, "Simple Mail Transfer", false));
-//         map.insert(27, TcpPortUsage::new(27, "NSW User System FE", false));
-//         map.insert(29, TcpPortUsage::new(29, "MSG ICP", false));
-//         map.insert(31, TcpPortUsage::new(31, "MSG Authentication", false));
-//         map.insert(33, TcpPortUsage::new(33, "Display Support Protocol", false));
-//         map
-//     };
-// }
-
 #[cfg(feature = "port_desc")]
 lazy_static! {
     static ref PORT_LIST: HashMap<u16, &'static str> = {
@@ -5892,7 +5839,7 @@ lazy_static! {
         123, 135, 137, 138, 139, 143, 161, 162, 177, 179, 194, 201, 264, 318, 381, 383, 389, 411,
         412, 427, 443, 445, 464, 465, 497, 500, 512, 513, 514, 515, 520, 521, 540, 548, 554, 546,
         547, 560, 563, 587, 591, 593, 596, 631, 636, 639, 646, 691, 860, 873, 902, 989, 990, 993,
-        995, 1400,
+        995, 1400, 3400, 3401, 3445, 3500, 4070, 4444,
     ];
 }
 

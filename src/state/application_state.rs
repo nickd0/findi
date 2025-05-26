@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 use tui::widgets::TableState;
 
 use crate::config::AppConfig;
@@ -23,6 +25,7 @@ pub struct ApplicationState {
     pub modal_state: Option<HostModalState>,
     pub search_filter_opt: SearchFilterOption,
     pub app_config: AppConfig,
+    pub network_name_server: Option<Ipv4Addr>,
     // TODO: should ui focus be part of application state?
     // pub focus: UiComponent
 }

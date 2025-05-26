@@ -9,29 +9,26 @@ Notes:
 - Standardize error and result types
 */
 
-mod network;
-mod ui;
-mod state;
 mod config;
+mod network;
+mod state;
+mod ui;
 
-use ui::ui_loop;
-use network::input_parse;
-use state::store::AppStateStore;
-use state::actions::AppAction;
-use network::init_host_search;
 use config::AppConfig;
+use network::init_host_search;
+use network::input_parse;
+use state::actions::AppAction;
+use state::store::AppStateStore;
+use ui::ui_loop;
 
-use std::process::exit;
 use std::net::Ipv4Addr;
+use std::process::exit;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool};
 
-use pnet::{
-    datalink,
-    ipnetwork::IpNetwork,
-};
-use clap::{App, Arg, ArgMatches, crate_version, crate_authors};
+use clap::{crate_authors, crate_version, App, Arg, ArgMatches};
 use colored::Colorize;
+use pnet::{datalink, ipnetwork::IpNetwork};
 
 static GLOBAL_RUN: AtomicBool = AtomicBool::new(true);
 
@@ -40,67 +37,70 @@ fn parse_args<'a>() -> ArgMatches<'a> {
         .version(crate_version!())
         .author(crate_authors!())
         .about("A local network discovery tool")
-
-        .arg(Arg::with_name("disable_ui")
-            .short("n")
-            .long("no-ui")
-            .help("Disable the TUI app"))
-
-        .arg(Arg::with_name("custom_cidr")
-            .short("c")
-            .long("cidr")
-            .help("Network host query in CIDR notation")
-            .takes_value(true))
-
-        .arg(Arg::with_name("interface")
-            .short("i")
-            .long("interface")
-            .help("Network interface for query")
-            .takes_value(true))
-
-        .arg(Arg::with_name("scan_ports")
-            .short("p")
-            .long("tcpports")
-            .help("TCP port scan list/range (e.g. -p 22 or -p 22,443 or -p 80-90)")
-            .takes_value(true))
-
-        .arg(Arg::with_name("output_file")
-            .short("o")
-            .long("output")
-            .help("Output file location with extension (csv|json|txt)")
-            .takes_value(true))
-
-        .arg(Arg::with_name("tick_len")
-            .short("t")
-            .long("ticklen")
-            .help("UI timer tick length in ms. If no key events, UI redraws at this interval.")
-            .takes_value(true))
-
-        .arg(Arg::with_name("nworkers")
-            .short("w")
-            .long("numworkers")
-            .help("Number of workers for network scanning.")
-            .takes_value(true))
-
+        .arg(
+            Arg::with_name("disable_ui")
+                .short("n")
+                .long("no-ui")
+                .help("Disable the TUI app"),
+        )
+        .arg(
+            Arg::with_name("custom_cidr")
+                .short("c")
+                .long("cidr")
+                .help("Network host query in CIDR notation")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("interface")
+                .short("i")
+                .long("interface")
+                .help("Network interface for query")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("scan_ports")
+                .short("p")
+                .long("tcpports")
+                .help("TCP port scan list/range (e.g. -p 22 or -p 22,443 or -p 80-90)")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("output_file")
+                .short("o")
+                .long("output")
+                .help("Output file location with extension (csv|json|txt)")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("tick_len")
+                .short("t")
+                .long("ticklen")
+                .help("UI timer tick length in ms. If no key events, UI redraws at this interval.")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("nworkers")
+                .short("w")
+                .long("numworkers")
+                .help("Number of workers for network scanning.")
+                .takes_value(true),
+        )
         .get_matches()
 }
 
 fn main() {
-
     let matches = parse_args();
 
     let interfaces = datalink::interfaces();
 
     // Find a suitable interface and match by name if provided
-    let default_iface = interfaces
-        .iter()
-        .find(|e| {
-            e.is_up() &&
-            !e.is_loopback() &&
-            !e.ips.is_empty() &&
-            e.ips.iter().any(|&ip| ip.is_ipv4()) &&
-            matches.value_of("interface").unwrap_or(&e.name) == e.name
-        });
+    let default_iface = interfaces.iter().find(|e| {
+        e.is_up()
+            && !e.is_loopback()
+            && !e.ips.is_empty()
+            && e.ips.iter().any(|&ip| ip.is_ipv4())
+            && matches.value_of("interface").unwrap_or(&e.name) == e.name
+    });
 
     let mut store = AppStateStore::new();
 
@@ -110,13 +110,16 @@ fn main() {
     if let Some(input) = matches.value_of("custom_cidr") {
         match input_parse(&input) {
             Ok(hs) => hosts = hs,
-            Err(msg) => return println!("{}", msg)
+            Err(msg) => return println!("{}", msg),
         }
 
         query = input.to_owned();
-
     } else if let Some(default_if_some) = default_iface {
-        if let Some(IpNetwork::V4(ipn)) = default_if_some.ips.iter().find(|ip| matches!(ip, IpNetwork::V4(_))) {
+        if let Some(IpNetwork::V4(ipn)) = default_if_some
+            .ips
+            .iter()
+            .find(|ip| matches!(ip, IpNetwork::V4(_)))
+        {
             // TODO: how to handle multiple ips on one interface?
             hosts = ipn.iter().collect();
             query = ipn.to_string();
@@ -124,9 +127,8 @@ fn main() {
             eprintln!("Currently only interfaces with an IPv4 address can be used. Current interface: {:?}", default_iface);
             exit(1);
         }
-
     } else {
-        if let Some(input_if)  = matches.value_of("interface") {
+        if let Some(input_if) = matches.value_of("interface") {
             eprintln!("The interface {} was not suitable. It may be down, loopback, or not have an IPv4 address.", input_if)
         } else {
             eprintln!("No input provided and could not find a suitable interface!")
@@ -161,6 +163,7 @@ fn main() {
 
     let shared_store = Arc::new(Mutex::new(store));
 
+    // TODO find router first
     init_host_search(shared_store.clone());
 
     #[cfg(feature = "ui")]
@@ -179,7 +182,7 @@ fn main() {
         loop {
             let hstore = lstore.lock().unwrap();
             if hostidx >= hstore.state.hosts.len() {
-                break
+                break;
             }
 
             let host = &hstore.state.hosts[hostidx];
@@ -187,26 +190,27 @@ fn main() {
                 if let Some(dur) = host.ping_res {
                     println!(
                         "Live host {} {}{}",
-
                         format!(
                             "{:<28}",
-
-                            format!(
-                                "{:<15?} ({:.2?}ms)",
-                                host.ip, dur.as_millis()
-                            )
+                            format!("{:<15?} ({:.2?}ms)", host.ip, dur.as_millis())
                         ),
-
-                        format!("{:<30}",
+                        format!(
+                            "{:<30}",
                             match &host.host_name {
                                 Some(Ok(hostname)) => hostname.green(),
-                                _ => "--".red()
+                                _ => "--".red(),
                             }
                         ),
-
                         match hstore.state.port_query.len() {
                             0 => String::default(),
-                            _ => format!(" TCP ports: {}", host.tcp_ports.iter().map(|&p| p.to_string()).collect::<Vec<String>>().join(","))
+                            _ => format!(
+                                " TCP ports: {}",
+                                host.tcp_ports
+                                    .iter()
+                                    .map(|&p| p.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join(",")
+                            ),
                         }
                     )
                 }

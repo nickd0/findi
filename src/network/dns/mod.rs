@@ -17,19 +17,25 @@ All multicast groups are in  224.0.0.0 through 239.255.255.255
 mDNS multicast group is on 224.0.0.251
 */
 
-pub mod encoders;
 pub mod decoders;
+pub mod encoders;
 
-use encoders::DnsAddressEncoder;
 use decoders::DnsAnswerDecoder;
+use encoders::DnsAddressEncoder;
 
+use anyhow::Result;
 use bincode::config::{DefaultOptions, Options};
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
-use anyhow::Result;
 
-use std::net::{Ipv4Addr, UdpSocket, ToSocketAddrs};
+use std::net::{Ipv4Addr, ToSocketAddrs, UdpSocket};
 use std::time::Duration;
+
+pub enum HostnameLookupUdpPort {
+    DNS = 53,
+    MDNS = 5353,
+    NBSTAT = 137,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DnsPacketHeader {
@@ -54,14 +60,13 @@ impl Default for DnsPacketHeader {
     }
 }
 
-
 // A PTR record is used for reverse DNS lookup
 // https://www.cloudflare.com/learning/dns/dns-records/dns-ptr-record/
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
 #[repr(u16)]
 pub enum DnsQuestionType {
     PTR = 0x0C,
-    NBSTAT = 0x21
+    NBSTAT = 0x21,
 }
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
@@ -160,8 +165,7 @@ impl DnsPacket {
 
     #[allow(dead_code)]
     pub fn from_resp_bytes(bytes: &[u8]) -> Result<DnsPacket> {
-        let header: DnsPacketHeader = serializer()
-            .deserialize(&bytes[..12])?;
+        let header: DnsPacketHeader = serializer().deserialize(&bytes[..12])?;
 
         let pack = DnsPacket::from(header);
         Ok(pack)
@@ -183,7 +187,7 @@ impl DnsPacket {
         for q in &self.questions {
             let qbytes = match q.qtype {
                 DnsQuestionType::PTR => encoders::DnsPtrEncoder::encode(&q.addr),
-                DnsQuestionType::NBSTAT => encoders::DnsNbstatEncoder::encode(&q.addr)
+                DnsQuestionType::NBSTAT => encoders::DnsNbstatEncoder::encode(&q.addr),
             };
             let qlen = qbytes.len();
             bytes.extend(qbytes);
@@ -227,13 +231,11 @@ struct DnsAnswer {
 }
 
 // For now, we assume only one answer per reverse lookup, so only return one in this func
-pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr) -> Result<T> {
+pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(
+    ip: Ipv4Addr,
+    port: HostnameLookupUdpPort,
+) -> Result<T> {
     let qtype = T::default_qtype();
-
-    let port = match qtype {
-        DnsQuestionType::NBSTAT => 137,
-        DnsQuestionType::PTR => 5353
-    };
 
     let tid: u16 = 0xF00D;
     let mut packet = DnsPacket::new(tid);
@@ -241,7 +243,12 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr) -> Result<T> {
     let mut buf = [0; 100];
     packet.add_q(nb_q);
 
-    dns_udp_transact((ip, port), &mut packet, &mut buf)?;
+    let mut query_ip = ip;
+    if matches!(port, HostnameLookupUdpPort::MDNS) {
+        query_ip = Ipv4Addr::new(224, 0, 0, 251);
+    }
+
+    dns_udp_transact((query_ip, port as u16), &mut packet, &mut buf)?;
 
     // Do we care about the header?
     // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
@@ -250,7 +257,11 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(ip: Ipv4Addr) -> Result<T> {
     T::decode(&packet, &buf)
 }
 
-fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> {
+fn dns_udp_transact<A: ToSocketAddrs>(
+    dst: A,
+    packet: &mut DnsPacket,
+    buf: &mut [u8],
+) -> Result<()> {
     let usock = UdpSocket::bind("0.0.0.0:0")?;
     usock.connect(dst)?;
     usock.send(&packet.as_bytes().unwrap())?;
@@ -263,70 +274,37 @@ fn dns_udp_transact<A: ToSocketAddrs>(dst: A, packet: &mut DnsPacket, buf: &mut 
 mod tests {
     use super::*;
 
-    static PACKET_BYTES: [u8;40] = [
+    static PACKET_BYTES: [u8; 40] = [
         // Header //
         // Transaction ID
-        0xF0, 0xF0,
-        // Flags
-        0x00,
-        0x00,
+        0xF0, 0xF0, // Flags
+        0x00, 0x00,
         // Number of questions, answers, authoritative records, additional records
-        0x00, 0x01,
-        0x00, 0x00,
-        0x00, 0x00,
-        0x00, 0x00,
-
+        0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         // Question //
 
         // Address query
-        0x02, 0x31, 0x30, 0x01,
-        0x39, 0x01, 0x30, 0x02,
-        0x31, 0x30, 0x07, 0x69,
-        0x6e, 0x2d, 0x61, 0x64,
-        0x64, 0x72, 0x04, 0x61,
-        0x72, 0x70, 0x61, 0x00,
-
-        // Query type "PTR"
-        0x00, 0x0C,
-
-        // Query class "IN"
-        0x00, 0x01
-
+        0x02, 0x31, 0x30, 0x01, 0x39, 0x01, 0x30, 0x02, 0x31, 0x30, 0x07, 0x69, 0x6e, 0x2d, 0x61,
+        0x64, 0x64, 0x72, 0x04, 0x61, 0x72, 0x70, 0x61, 0x00, // Query type "PTR"
+        0x00, 0x0C, // Query class "IN"
+        0x00, 0x01,
     ];
 
-    static NB_PACKET_BYTES: [u8;50] = [
+    static NB_PACKET_BYTES: [u8; 50] = [
         // Header //
         // Transaction ID
-        0xF0, 0x0D,
-        // Flags
-        0x00,
-        0x00,
+        0xF0, 0x0D, // Flags
+        0x00, 0x00,
         // Number of questions, answers, authoritative records, additional records
-        0x00, 0x01,
-        0x00, 0x00,
-        0x00, 0x00,
-        0x00, 0x00,
-
+        0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         // Question //
 
         // Address query
-        0x20,
-        0x43, 0x4b, 0x41, 0x41, 0x41,
-        0x41, 0x41, 0x41, 0x41, 0x41,
-        0x41, 0x41, 0x41, 0x41, 0x41,
-        0x41, 0x41, 0x41, 0x41, 0x41,
-        0x41, 0x41, 0x41, 0x41, 0x41,
-        0x41, 0x41, 0x41, 0x41, 0x41,
-        0x41, 0x41,
-
-        0x00,
-
-        // Query type "PTR"
-        0x00, 0x21,
-
-        // Query class "IN"
-        0x00, 0x01
-
+        0x20, 0x43, 0x4b, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+        0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+        0x41, 0x41, 0x41, 0x00, // Query type "PTR"
+        0x00, 0x21, // Query class "IN"
+        0x00, 0x01,
     ];
 
     #[test]
@@ -339,7 +317,14 @@ mod tests {
         let ip = Ipv4Addr::new(10, 0, 9, 10);
         let q = DnsQuestion::new(ip, DnsQuestionType::PTR);
 
-        assert_eq!(q.arpa_addr.addr_enc.iter().map(|c| *c as char).collect::<String>(), "\u{2}10\u{1}9\u{1}0\u{2}10\u{7}in-addr\u{4}arpa");
+        assert_eq!(
+            q.arpa_addr
+                .addr_enc
+                .iter()
+                .map(|c| *c as char)
+                .collect::<String>(),
+            "\u{2}10\u{1}9\u{1}0\u{2}10\u{7}in-addr\u{4}arpa"
+        );
 
         packet.add_q(q);
 
@@ -376,21 +361,13 @@ mod tests {
 
         packet_buffer.extend(vec![
             // Name pointer
-            0xC0, 0x00,
-            // Question type PTR
-            0x00, 0x0C,
-            // Question class IN
-            0x00, 0x01,
-            // TTL 600
-            0x00, 0x00, 0x02, 0x58,
-            // Size of address
-            0x00, 0x0e,
-
-            0x06,
-            0x61, 0x2d, 0x68, 0x6f, 0x73, 0x74, // "a-host"
-            0x05,
-            0x6c, 0x6f, 0x63, 0x61, 0x6c, // "local"
-            0x00
+            0xC0, 0x00, // Question type PTR
+            0x00, 0x0C, // Question class IN
+            0x00, 0x01, // TTL 600
+            0x00, 0x00, 0x02, 0x58, // Size of address
+            0x00, 0x0e, 0x06, 0x61, 0x2d, 0x68, 0x6f, 0x73, 0x74, // "a-host"
+            0x05, 0x6c, 0x6f, 0x63, 0x61, 0x6c, // "local"
+            0x00,
         ]);
 
         let resp_packet = DnsPacket::from_resp_bytes(&packet_buffer).unwrap();

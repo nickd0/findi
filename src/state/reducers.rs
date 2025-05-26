@@ -165,7 +165,6 @@ impl Reducer<AppAction> for AppReducer {
                         // TODO: Another O(n) operation
                         if let Some(idx) = modal_state.ports.iter().position(|p| p.0 == res.0) {
                             modal_state.ports[idx] = res;
-                            eprintln!("GOT A PORT: idx {0} port {1}", idx, res.0);
 
                             // Add to active TCP ports
                             if let Some(Ok(_)) = res.1 {
@@ -207,6 +206,11 @@ impl Reducer<AppAction> for AppReducer {
 
             AppAction::SetConfigTick(tick_len) => {
                 state.app_config.tick_len = tick_len;
+                state
+            }
+
+            AppAction::SetNetworkNameServer(name_server) => {
+                state.network_name_server = Some(name_server);
                 state
             }
             _ => state,

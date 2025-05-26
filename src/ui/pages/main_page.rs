@@ -275,18 +275,15 @@ pub fn handle_main_page_event(key: Key, store: &mut AppStateStore, _: SharedAppS
                 - Press 's' to go to query search (return to begin query)\n\
                 - Press 'f' to go to query filter\n\
                 (Shortcuts are indicated by an underline character)\n\n\
-
                 Filter controls:\n\
                 - Use left/right arrows or space bar to cycle through filters\n\
                 - Use Down arrow to go back to host table\n\n\
-
                 Navigate the hosts table with arrows or similar to Vim: \n\
                 - To go down one list item use down arrow or 'j' key\n\
                 - To go up one list item use down arrow or 'k' key\n\
                 - Use shift with the 'j' or 'k' key (or Page Up/Page Down) to move 20 items\n\
                 - Use the space bar to jump 20 items down\n\
                 - Press enter to see more information on that host\n\n\
-
                 In the Host Info modal: \n\
                 - Press 't' to go to TCP Port scan\n\
                 - Press 'h' to go to host info

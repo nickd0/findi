@@ -1,15 +1,10 @@
-use crate::network::ping_result::PingResult;
-use crate::network::{
-    host::Host,
-};
-use crate::ui::{
-    pages::PageContent,
-    components::search_filter::SearchFilterOption
-};
-use crate::ui::notification::Notification;
-use crate::ui::modal::Modal;
-use crate::state::host_modal_state::HostModalAction;
 use crate::config::AppConfig;
+use crate::network::host::Host;
+use crate::network::ping_result::PingResult;
+use crate::state::host_modal_state::HostModalAction;
+use crate::ui::modal::Modal;
+use crate::ui::notification::Notification;
+use crate::ui::{components::search_filter::SearchFilterOption, pages::PageContent};
 
 use std::net::Ipv4Addr;
 
@@ -38,6 +33,7 @@ pub enum AppAction {
     SetConfig(AppConfig),
     SetConfigNWorkers(usize),
     SetConfigTick(usize),
+    SetNetworkNameServer(Ipv4Addr),
 }
 
 // impl AppAction {

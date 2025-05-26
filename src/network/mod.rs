@@ -7,7 +7,6 @@ pub mod udp_ping;
 
 use crate::state::{
     host_modal_state::{HostModalAction, HostModalState},
-    modal_state,
     store::SharedAppStateStore,
 };
 
@@ -20,7 +19,6 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use clap::App;
 use pnet::ipnetwork::IpNetwork;
 use port_list::COMMON_PORTS;
 use threadpool::ThreadPool;
