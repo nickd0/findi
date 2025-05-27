@@ -7,6 +7,7 @@ use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
 use super::udp_ping::udp_ping;
 
 use anyhow::Result;
+use log::warn;
 
 use std::collections::HashSet;
 use std::fmt;
@@ -81,22 +82,19 @@ impl Host {
         // Perform DNS reverse lookup
         // Then mDNS reverse lookup if fails
         // Then NBNS NBSTAT query if fails
-        match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::DNS) {
+        match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::MDNS) {
             Ok(ans) => {
-                eprintln!("Resolved {0} with DNS {1}", ip, ans.hostname);
                 host.host_name = Some(Ok(ans.hostname));
                 host.res_type = Some(HostResolutionType::MDNS)
             }
-            Err(_) => match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::MDNS) {
+            Err(_) => match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::DNS) {
                 Ok(ans) => {
-                    eprintln!("Resolved {0} with mDNS {1}", ip, ans.hostname);
                     host.host_name = Some(Ok(ans.hostname));
                     host.res_type = Some(HostResolutionType::MDNS)
                 }
                 Err(_) => match reverse_dns_lookup::<NbnsAnswer>(ip, HostnameLookupUdpPort::NBSTAT)
                 {
                     Ok(ans) => {
-                        eprintln!("Resolved {0} with NBNS {1}", ip, ans.hostname);
                         host.host_name = Some(Ok(ans.hostname));
                         host.res_type = Some(HostResolutionType::NBNS)
                     }
@@ -134,7 +132,10 @@ impl Host {
                     self.tcp_ports.insert(TCP_PING_PORT);
                     Some(t)
                 }
-                Err(_) => None,
+                Err(_) => {
+                    warn!("TCP ping failed to {:?}", self.ip);
+                    None
+                }
             },
         }
     }

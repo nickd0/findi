@@ -89,6 +89,8 @@ fn parse_args<'a>() -> ArgMatches<'a> {
 }
 
 fn main() {
+    simple_logger::init_with_env().unwrap();
+
     let matches = parse_args();
 
     let interfaces = datalink::interfaces();

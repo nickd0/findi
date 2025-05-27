@@ -24,9 +24,7 @@ pub struct HostModalState {
     pub tab_state: TabsState,
     pub selected_host: Host,
     pub port_query: String,
-    pub selected_component: usize,
     pub ports: Vec<TcpPortScanResult>,
-    pub port_query_run: bool,
 }
 
 impl HostModalState {
@@ -42,9 +40,7 @@ impl HostModalState {
             },
             selected_host: host,
             port_query: String::new(),
-            selected_component: 0,
             ports: Vec::new(),
-            port_query_run: false,
         }
     }
 }
