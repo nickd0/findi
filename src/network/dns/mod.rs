@@ -244,12 +244,10 @@ fn mds_multicast_transact(packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> 
     let usock = UdpSocket::bind("0.0.0.0:0")?;
     usock.join_multicast_v4(&UDP_MDNS_MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
     usock.set_multicast_loop_v4(true)?;
-    usock
-        .send_to(
-            &packet.as_bytes().unwrap(),
-            (UDP_MDNS_MULTICAST_ADDR, UDP_MDNS_MULTICAST_PORT),
-        )
-        .expect("send");
+    usock.send_to(
+        &packet.as_bytes().unwrap(),
+        (UDP_MDNS_MULTICAST_ADDR, UDP_MDNS_MULTICAST_PORT),
+    )?;
     usock.set_read_timeout(Some(Duration::from_millis(2000)))?;
     usock.recv_from(buf)?;
     Ok(())
