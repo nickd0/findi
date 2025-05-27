@@ -25,6 +25,7 @@ use encoders::DnsAddressEncoder;
 
 use anyhow::Result;
 use bincode::config::{DefaultOptions, Options};
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
@@ -82,45 +83,13 @@ pub struct DnsQuestion {
     #[serde(skip_serializing)]
     addr: Ipv4Addr,
 
-    #[serde(skip_serializing)]
-    pub arpa_addr: DnsArpaAddr,
-
     qtype: DnsQuestionType,
     qclass: DnsQuestionClass,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DnsArpaAddr {
-    #[serde(skip_serializing)]
-    addr: Ipv4Addr,
-
     addr_enc: Vec<u8>,
-}
-
-// Use custom serializer?
-impl DnsArpaAddr {
-    pub fn from(addr: Ipv4Addr) -> DnsArpaAddr {
-        let octs = addr.octets();
-        let mut addr_str = octs
-            .iter()
-            .map(|s| s.to_string())
-            .rev()
-            .collect::<Vec<String>>()
-            .join(".");
-
-        addr_str.push_str(".in-addr.arpa");
-
-        let mut addr_enc: Vec<u8> = vec![];
-
-        let mut bts: &[u8];
-        for chunk in addr_str.split('.') {
-            addr_enc.push(chunk.len() as u8);
-            bts = chunk.as_bytes();
-            addr_enc.extend_from_slice(&bts);
-        }
-
-        DnsArpaAddr { addr, addr_enc }
-    }
 }
 
 // TODO: Serialize to bincode
@@ -211,7 +180,6 @@ impl DnsQuestion {
     pub fn new(addr: Ipv4Addr, qtype: DnsQuestionType) -> DnsQuestion {
         Self {
             addr,
-            arpa_addr: DnsArpaAddr::from(addr),
             qtype,
             qclass: DnsQuestionClass::IN,
         }
@@ -248,7 +216,9 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(
         query_ip = Ipv4Addr::new(224, 0, 0, 251);
     }
 
-    dns_udp_transact((query_ip, port as u16), &mut packet, &mut buf)?;
+    let transact_port = port as u16;
+    dns_udp_transact((query_ip, transact_port), &mut packet, &mut buf)?;
+    info!("Received tx bytes: {:?}", buf);
 
     // Do we care about the header?
     // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
@@ -257,11 +227,13 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(
     T::decode(&packet, &buf)
 }
 
-fn dns_udp_transact<A: ToSocketAddrs>(
+fn dns_udp_transact<A: ToSocketAddrs + std::fmt::Debug>(
     dst: A,
     packet: &mut DnsPacket,
     buf: &mut [u8],
 ) -> Result<()> {
+    // Use multicase for MDNS https://users.rust-lang.org/t/how-to-distinguish-the-incoming-packets-when-joining-multiple-multicast-feeds-in-udpsocket/119007
+    info!("Starting UDP DNS transaction to {:?}", dst);
     let usock = UdpSocket::bind("0.0.0.0:0")?;
     usock.connect(dst)?;
     usock.send(&packet.as_bytes().unwrap())?;
@@ -316,15 +288,6 @@ mod tests {
 
         let ip = Ipv4Addr::new(10, 0, 9, 10);
         let q = DnsQuestion::new(ip, DnsQuestionType::PTR);
-
-        assert_eq!(
-            q.arpa_addr
-                .addr_enc
-                .iter()
-                .map(|c| *c as char)
-                .collect::<String>(),
-            "\u{2}10\u{1}9\u{1}0\u{2}10\u{7}in-addr\u{4}arpa"
-        );
 
         packet.add_q(q);
 

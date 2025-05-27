@@ -4,3 +4,4 @@ _keep
 .DS_Store
 .vscode
 release
+data

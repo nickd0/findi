@@ -1,13 +1,14 @@
-use std::io::prelude::*;
-use std::net::{TcpStream, Ipv4Addr, IpAddr, SocketAddr};
-use std::time::{Duration, Instant};
 use std::collections::HashSet;
+use std::io::prelude::*;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use std::time::{Duration, Instant};
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use log::info;
 
 use super::ping_result::PingResult;
 
-pub const TCP_PING_PORT: u16 = 80;
+pub const TCP_PING_PORT: u16 = 22;
 
 pub fn parse_portlist(plist_str: &str) -> Result<Vec<u16>> {
     let mut plist: HashSet<u16> = HashSet::new();
@@ -16,7 +17,9 @@ pub fn parse_portlist(plist_str: &str) -> Result<Vec<u16>> {
 
     for group in groups {
         match group.parse::<u16>() {
-            Ok(port) => { let _ = plist.insert(port); },
+            Ok(port) => {
+                let _ = plist.insert(port);
+            }
             Err(_) => {
                 let caps_res = re.captures(group);
                 match caps_res {
@@ -26,9 +29,9 @@ pub fn parse_portlist(plist_str: &str) -> Result<Vec<u16>> {
                         let end: u16 = caps[2].parse().unwrap();
                         let prange: Vec<u16> = (start..=end).collect();
                         plist.extend(prange);
-                    },
+                    }
 
-                    None => return Err(anyhow!("Could not parse port range"))
+                    None => return Err(anyhow!("Could not parse port range")),
                 }
             }
         }
@@ -40,6 +43,7 @@ pub fn parse_portlist(plist_str: &str) -> Result<Vec<u16>> {
 }
 
 pub fn tcp_ping(ip: Ipv4Addr) -> PingResult {
+    info!("Sending TCP ping to {:?}", ip);
     tcp_scan_port(&ip, TCP_PING_PORT)
 }
 
