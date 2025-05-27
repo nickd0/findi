@@ -1,6 +1,8 @@
 use super::dns::{
     decoders::{MdnsAnswer, NbnsAnswer},
-    reverse_dns_lookup, HostnameLookupUdpPort,
+    reverse_dns_lookup,
+    transactors::UdpTransactorType::{HostTransact, MulticastTransact},
+    HostnameLookupUdpPort,
 };
 use super::ping_result::PingResultOption;
 use super::tcp_ping::{tcp_ping, TCP_PING_PORT};
@@ -82,25 +84,31 @@ impl Host {
         // Perform DNS reverse lookup
         // Then mDNS reverse lookup if fails
         // Then NBNS NBSTAT query if fails
-        match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::MDNS) {
+        match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::MDNS, MulticastTransact) {
             Ok(ans) => {
                 host.host_name = Some(Ok(ans.hostname));
                 host.res_type = Some(HostResolutionType::MDNS)
             }
-            Err(_) => match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::DNS) {
-                Ok(ans) => {
-                    host.host_name = Some(Ok(ans.hostname));
-                    host.res_type = Some(HostResolutionType::MDNS)
-                }
-                Err(_) => match reverse_dns_lookup::<NbnsAnswer>(ip, HostnameLookupUdpPort::NBSTAT)
+            Err(_) => {
+                match reverse_dns_lookup::<MdnsAnswer>(ip, HostnameLookupUdpPort::DNS, HostTransact)
                 {
                     Ok(ans) => {
                         host.host_name = Some(Ok(ans.hostname));
-                        host.res_type = Some(HostResolutionType::NBNS)
+                        host.res_type = Some(HostResolutionType::MDNS)
                     }
-                    Err(_) => host.host_name = Some(Err("Reverse lookup failed".to_owned())),
-                },
-            },
+                    Err(_) => match reverse_dns_lookup::<NbnsAnswer>(
+                        ip,
+                        HostnameLookupUdpPort::NBSTAT,
+                        HostTransact,
+                    ) {
+                        Ok(ans) => {
+                            host.host_name = Some(Ok(ans.hostname));
+                            host.res_type = Some(HostResolutionType::NBNS)
+                        }
+                        Err(_) => host.host_name = Some(Err("Reverse lookup failed".to_owned())),
+                    },
+                }
+            }
         }
 
         host.ping_done = true;

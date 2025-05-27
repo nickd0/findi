@@ -19,13 +19,15 @@ mDNS multicast group is on 224.0.0.251
 
 pub mod decoders;
 pub mod encoders;
+pub mod transactors;
 
 use decoders::DnsAnswerDecoder;
 use encoders::DnsAddressEncoder;
+use transactors::{UdpTransactorType, UDP_MDNS_MULTICAST_ADDR, UDP_MDNS_MULTICAST_PORT};
 
 use anyhow::Result;
 use bincode::config::{DefaultOptions, Options};
-use log::info;
+use log::trace;
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
@@ -202,6 +204,7 @@ struct DnsAnswer {
 pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(
     ip: Ipv4Addr,
     port: HostnameLookupUdpPort,
+    transactor: UdpTransactorType,
 ) -> Result<T> {
     let qtype = T::default_qtype();
 
@@ -211,19 +214,14 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(
     let mut buf = [0; 100];
     packet.add_q(nb_q);
 
-    let mut query_ip = ip;
-    if matches!(port, HostnameLookupUdpPort::MDNS) {
-        query_ip = Ipv4Addr::new(224, 0, 0, 251);
+    match transactor {
+        UdpTransactorType::HostTransact => {
+            dns_udp_transact((ip, port as u16), &mut packet, &mut buf)?
+        }
+        UdpTransactorType::MulticastTransact => mds_multicast_transact(&mut packet, &mut buf)?,
     }
+    trace!("Received tx bytes: {:?}", buf);
 
-    let transact_port = port as u16;
-    dns_udp_transact((query_ip, transact_port), &mut packet, &mut buf)?;
-    info!("Received tx bytes: {:?}", buf);
-
-    // Do we care about the header?
-    // let header: DnsPacketHeader = serializer().deserialize(&buf[0..12]);
-    // NetBIOS lookups always have the same offset, so no need to parse header for now
-    // let answer = NbnsAnswer::decode(&buf[12..])?;
     T::decode(&packet, &buf)
 }
 
@@ -232,13 +230,28 @@ fn dns_udp_transact<A: ToSocketAddrs + std::fmt::Debug>(
     packet: &mut DnsPacket,
     buf: &mut [u8],
 ) -> Result<()> {
-    // Use multicase for MDNS https://users.rust-lang.org/t/how-to-distinguish-the-incoming-packets-when-joining-multiple-multicast-feeds-in-udpsocket/119007
-    info!("Starting UDP DNS transaction to {:?}", dst);
+    trace!("Starting UDP DNS transaction to {:?}", dst);
     let usock = UdpSocket::bind("0.0.0.0:0")?;
     usock.connect(dst)?;
     usock.send(&packet.as_bytes().unwrap())?;
-    usock.set_read_timeout(Some(Duration::from_millis(400)))?;
+    usock.set_read_timeout(Some(Duration::from_millis(2000)))?;
     usock.recv(buf)?;
+    Ok(())
+}
+
+fn mds_multicast_transact(packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> {
+    trace!("Starting multicast transaction");
+    let usock = UdpSocket::bind("0.0.0.0:0")?;
+    usock.join_multicast_v4(&UDP_MDNS_MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
+    usock.set_multicast_loop_v4(true)?;
+    usock
+        .send_to(
+            &packet.as_bytes().unwrap(),
+            (UDP_MDNS_MULTICAST_ADDR, UDP_MDNS_MULTICAST_PORT),
+        )
+        .expect("send");
+    usock.set_read_timeout(Some(Duration::from_millis(2000)))?;
+    usock.recv_from(buf)?;
     Ok(())
 }
 
