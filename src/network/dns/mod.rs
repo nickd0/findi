@@ -216,16 +216,16 @@ pub fn reverse_dns_lookup<T: DnsAnswerDecoder>(
 
     match transactor {
         UdpTransactorType::HostTransact => {
-            dns_udp_transact((ip, port as u16), &mut packet, &mut buf)?
+            udp_host_transact((ip, port as u16), &mut packet, &mut buf)?
         }
-        UdpTransactorType::MulticastTransact => mds_multicast_transact(&mut packet, &mut buf)?,
+        UdpTransactorType::MulticastTransact => udp_multicast_transact(&mut packet, &mut buf)?,
     }
     trace!("Received tx bytes: {:?}", buf);
 
     T::decode(&packet, &buf)
 }
 
-fn dns_udp_transact<A: ToSocketAddrs + std::fmt::Debug>(
+fn udp_host_transact<A: ToSocketAddrs + std::fmt::Debug>(
     dst: A,
     packet: &mut DnsPacket,
     buf: &mut [u8],
@@ -239,7 +239,7 @@ fn dns_udp_transact<A: ToSocketAddrs + std::fmt::Debug>(
     Ok(())
 }
 
-fn mds_multicast_transact(packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> {
+fn udp_multicast_transact(packet: &mut DnsPacket, buf: &mut [u8]) -> Result<()> {
     trace!("Starting multicast transaction");
     let usock = UdpSocket::bind("0.0.0.0:0")?;
     usock.join_multicast_v4(&UDP_MDNS_MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
