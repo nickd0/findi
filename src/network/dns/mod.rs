@@ -20,13 +20,12 @@ mDNS multicast group is on 224.0.0.251
 pub mod decoders;
 pub mod encoders;
 
-use async_net::AsyncToSocketAddrs;
 use decoders::DnsAnswerDecoder;
 use encoders::DnsAddressEncoder;
 
 use anyhow::Result;
 use bincode::config::{DefaultOptions, Options};
-use log::{error, info};
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 
