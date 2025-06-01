@@ -410,7 +410,7 @@ pub fn handle_modal_event(key: Key, store: &mut AppStateStore, lstore: SharedApp
         Key::Enter => {
             match &store.state.modal_state {
                 Some(modal_state) => {
-                    if modal_state.tab_state.index == 1 {
+                    if modal_state.tab_state.index == 1 && !modal_state.port_scan_in_progress {
                         dispatch_common_port_scan(lstore);
                     } else if modal_state.tab_state.index == 2 {
                         dispatch_port_scan(lstore)

@@ -5,10 +5,12 @@ use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub enum HostModalAction {
+    ClearPortScanResults,
     SetSelected(usize),
     SetPortQueryInput(Key),
     SetPortScanResult(TcpPortScanResult),
     SetCommonPortsForScanning,
+    FinishPortScan,
 }
 
 #[derive(Clone, Debug)]
@@ -25,6 +27,7 @@ pub struct HostModalState {
     pub selected_host: Host,
     pub port_query: String,
     pub ports: Vec<TcpPortScanResult>,
+    pub port_scan_in_progress: bool,
 }
 
 impl HostModalState {
@@ -41,6 +44,7 @@ impl HostModalState {
             selected_host: host,
             port_query: String::new(),
             ports: Vec::new(),
+            port_scan_in_progress: false,
         }
     }
 }

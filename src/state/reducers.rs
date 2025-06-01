@@ -134,6 +134,11 @@ impl Reducer<AppAction> for AppReducer {
             AppAction::SetModalAction(action) => {
                 let mut modal_state = state.modal_state.clone().unwrap();
                 match action {
+                    HostModalAction::ClearPortScanResults => {
+                        modal_state.ports.clear();
+                        state.modal_state = Some(modal_state);
+                    }
+
                     HostModalAction::SetSelected(idx) => {
                         modal_state.tab_state.index = idx;
                         state.modal_state = Some(modal_state);
@@ -185,9 +190,15 @@ impl Reducer<AppAction> for AppReducer {
 
                     // TODO use this for custom port query
                     HostModalAction::SetCommonPortsForScanning => {
+                        modal_state.port_scan_in_progress = true;
                         for port in COMMON_PORTS.iter() {
                             modal_state.ports.push((*port, None));
                         }
+                        state.modal_state = Some(modal_state);
+                    }
+
+                    HostModalAction::FinishPortScan => {
+                        modal_state.port_scan_in_progress = false;
                         state.modal_state = Some(modal_state);
                     }
                 }

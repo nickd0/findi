@@ -127,7 +127,10 @@ pub fn init_host_search(store: SharedAppStateStore) {
 /// TODO: ensure this isn't dispatched more than once
 pub fn dispatch_port_scan(store: SharedAppStateStore) {
     thread::spawn(move || {
-        let lstore = store.lock().unwrap();
+        let mut lstore = store.lock().unwrap();
+        lstore.dispatch(AppAction::SetModalAction(
+            HostModalAction::ClearPortScanResults,
+        ));
         let modal_state: HostModalState = lstore.state.modal_state.clone().unwrap();
         drop(lstore);
 
@@ -156,6 +159,9 @@ pub fn dispatch_common_port_scan(store: SharedAppStateStore) {
     thread::spawn(move || {
         let mut lstore = store.lock().unwrap();
         lstore.dispatch(AppAction::SetModalAction(
+            HostModalAction::ClearPortScanResults,
+        ));
+        lstore.dispatch(AppAction::SetModalAction(
             HostModalAction::SetCommonPortsForScanning,
         ));
         let modal_state: HostModalState = lstore.state.modal_state.clone().unwrap();
@@ -178,5 +184,9 @@ pub fn dispatch_common_port_scan(store: SharedAppStateStore) {
             }
             thread::sleep(Duration::from_millis(10));
         }
+        store
+            .lock()
+            .unwrap()
+            .dispatch(AppAction::SetModalAction(HostModalAction::FinishPortScan));
     });
 }
